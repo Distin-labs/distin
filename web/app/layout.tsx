@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     siteName: "Distin",
     images: [
       {
-        url: "/og.jpg",
+        url: "/og.png",
         width: 1200,
         height: 630,
         alt: "Distin — One Solana account, every chain, no bridges",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     title: "Distin — One Solana account, every chain, no bridges",
     description:
       "Cross-chain threshold signing coordinated on Solana. No bridge, no wrapped assets.",
-    images: ["/og.jpg"],
+    images: ["/og.png"],
   },
 };
 
