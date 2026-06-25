@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kobe-frost:
+    name: kobe — FROST Ed25519 threshold signature
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine/kobe
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            engine/kobe/target
+          key: kobe-${{ runner.os }}-${{ hashFiles('engine/kobe/Cargo.lock') }}
+
+      # The real proof: a 2-of-3 FROST aggregate verified by the independent
+      # ed25519-dalek verifier, plus the negative controls. Green here == the
+      # cryptography works, not just that it compiled.
+      - name: Threshold-signature test
+        run: cargo test
+
+  kobe-ecdsa:
+    name: kobe-ecdsa — GG20 ECDSA (ETH / BTC / Tron)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine/kobe-ecdsa
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: engine/kobe-ecdsa/go.sum
+
+      # 2-of-3 GG20 threshold ECDSA recovered to the group address by
+      # go-ethereum Ecrecover; BTC (decred secp256k1) and Tron (known vector)
+      # verified by independent libraries. Slow (GG20 safe-prime DKG).
+      - name: Threshold-signature test
+        run: go test -v -timeout 600s ./
+
+  program:
+    name: distin — on-chain program (host tests + lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            engine/target
+          key: program-${{ runner.os }}-${{ hashFiles('engine/Cargo.lock') }}
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets
+
+      # Share-validation + threshold/overflow math, on the host target.
+      - name: Program host tests
+        run: cargo test --manifest-path programs/distin/Cargo.toml
+
+  web:
+    name: web — Next.js build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
