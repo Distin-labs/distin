@@ -47,49 +47,49 @@ const MONO = '"SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, monospace
 const features = [
   {
     img: "/feature_1.png",
-    title: "Native settlement",
-    body: "Liquidity stays on Solana from order to fill. No wrapped assets, no custodial relays, no waiting on an external chain to acknowledge.",
+    title: "A native signature, not a wrapped IOU",
+    body: "A quorum of operators runs a real threshold-signature ceremony and produces an ordinary signature on the destination chain's own curve. Ethereum, Bitcoin, Tron and Cosmos see a signature indistinguishable from a single key. No bridge contract, no wrapped asset, no honeypot to drain.",
   },
   {
     img: "/feature_2.png",
-    title: "Single-block routing",
-    body: "Routes resolve inside one block. What you quote is what you settle, with no second transaction to bridge the gap.",
+    title: "The secret is never reconstructed",
+    body: "Each operator holds one Shamir share. FROST for Ed25519, GG20 for secp256k1: the protocol combines partial signatures into one signature without the group key ever existing in one place. You can run cargo test and go test and watch an independent verifier accept the result.",
   },
   {
     img: "/feature_3.png",
-    title: "Verifiable reserves",
-    body: "Every pool publishes its state on-chain. Balances are readable by anyone, at any time, without trusting an off-chain attestation.",
+    title: "Solana coordinates, accounts, and slashes",
+    body: "An Anchor program owns the whole control plane: it opens a 32-byte signing intent, gates finalization on staked weight and a slot deadline, and slashes a misbehaving operator's bond. It records the real off-chain aggregate; it does not pretend to do the cryptography itself.",
   },
   {
     img: "/feature_4.png",
-    title: "Program-owned vaults",
-    body: "Funds sit in program-derived accounts the team cannot unilaterally move. Authority is code, not a multisig promise.",
+    title: "Coordination lives where it is cheap",
+    body: "Multi-round MPC needs several round-trips between operators. On a 12 to 15 second chain each round costs over a minute. On Solana's 400ms slots an interactive ceremony finishes in seconds, so the control plane sits on Solana and the signature lands wherever it is needed.",
   },
 ]
 
 const comparison = [
-  ["Asset movement", "Locked, minted, redeemed across chains", "Stays native on Solana"],
-  ["Settlement time", "Minutes, gated by external finality", "One Solana block"],
-  ["Trust surface", "Bridge validators and relayers", "On-chain program only"],
-  ["Failure mode", "Stranded wrapped assets", "Transaction simply reverts"],
+  ["What moves", "Asset locked, minted, redeemed across chains", "Nothing moves; a native signature is produced"],
+  ["What the destination sees", "A wrapped IOU and a bridge contract", "An ordinary signature on its own curve"],
+  ["Trust surface", "Bridge validators holding custody", "Bonded operators, slashed on-chain"],
+  ["Failure mode", "A drained bridge, stranded wrapped assets", "A request that simply expires"],
 ]
 
 const faqs = [
   {
-    q: "What does Distin replace?",
-    a: "The cross-chain bridge. Distin keeps liquidity native to Solana and settles routes inside a single block, so there is no lock-and-mint step to compromise.",
+    q: "What is Distin, exactly?",
+    a: "A control plane for cross-chain signing on Solana. Instead of bridging an asset, a quorum of bonded operators threshold-signs a native transaction for the destination chain. One Solana account, a real signature on every chain, no bridge in the path.",
   },
   {
-    q: "Where do funds actually sit?",
-    a: "In program-derived vault accounts. The controlling authority is the program itself, so balances cannot be moved by an off-chain key.",
+    q: "How do I know the threshold signing is real?",
+    a: "Run it. cargo test in engine/kobe produces a FROST Ed25519 signature an independent ed25519-dalek verifier accepts; go test in engine/kobe-ecdsa produces a GG20 secp256k1 signature go-ethereum ecrecovers to the group address, with Bitcoin and Tron verified against their own spec vectors. The group secret is never reconstructed.",
   },
   {
-    q: "How is reserve state verified?",
-    a: "Each pool writes its full state on-chain. Anyone can read balances directly from the cluster without relying on a third-party attestation.",
+    q: "Is anything live yet?",
+    a: "The reconciled Anchor program is deployed and live on Solana devnet at 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6. The off-chain MPC, the on-chain coordination loop, and a networked operator set are all built and independently verified. There is no audit and no mainnet yet, and that is stated plainly in the docs.",
   },
   {
     q: "Is there a token?",
-    a: "No token is live. Distin is the settlement engine first. Any future asset would be announced on-chain, never implied here.",
+    a: "No token is live. Distin is the signing protocol first. Any future asset would be announced on-chain, never implied here.",
   },
 ]
 
@@ -361,9 +361,9 @@ export default function Home() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="hero-top"
             >
-              <Label color="#fff">No bridge — Solana native settlement</Label>
+              <Label color="#fff">No bridge / Solana-coordinated threshold signing</Label>
               <span style={{ fontFamily: MONO, fontSize: 18, color: MUTED, letterSpacing: "0.06em" }}>
-                / Settlement engine
+                / Cross-chain signing control plane
               </span>
             </motion.div>
           </div>
@@ -380,9 +380,9 @@ export default function Home() {
                   margin: 0,
                 }}
               >
-                Liquidity,
+                One account,
                 <br />
-                settled{" "}
+                every{" "}
                 <span
                   style={{
                     background: `linear-gradient(95deg, ${ACCENT}, #c9b3ff)`,
@@ -391,7 +391,7 @@ export default function Home() {
                     color: "transparent",
                   }}
                 >
-                  native.
+                  chain.
                 </span>
               </h1>
               <motion.div
@@ -401,8 +401,9 @@ export default function Home() {
                 style={{ paddingBottom: 14, borderLeft: `1px solid ${LINE}`, paddingLeft: 28 }}
               >
                 <p style={{ fontSize: 20, color: MUTED, margin: "0 0 30px", lineHeight: 1.55 }}>
-                  Distin keeps assets on Solana from quote to fill and settles every route inside a
-                  single block. The bridge, and everything that breaks with it, is gone.
+                  A quorum of bonded operators threshold-signs a native transaction for any chain,
+                  coordinated and slashed by a Solana program. No bridge, no wrapped asset, no
+                  honeypot to drain.
                 </p>
                 <button
                   onClick={connectWallet}
@@ -433,10 +434,10 @@ export default function Home() {
       <section style={{ borderTop: `1px solid ${LINE}`, borderBottom: `1px solid ${LINE}`, background: SURFACE }}>
         <div className="metrics">
           {[
-            { label: "Settlement window", value: <span>1 block</span> },
-            { label: "Bridges in the path", value: <Counter to={0} /> },
-            { label: "Routes resolved on-chain", value: <Counter to={100} suffix="%" /> },
-            { label: "Custodial relays", value: <Counter to={0} /> },
+            { label: "Destination chains, one account", value: <Counter to={5} /> },
+            { label: "Curves: FROST Ed25519, GG20 secp256k1", value: <Counter to={2} /> },
+            { label: "Bridge contracts in the path", value: <Counter to={0} /> },
+            { label: "Times the group secret is reconstructed", value: <Counter to={0} /> },
           ].map((m, i) => (
             <div
               key={i}
@@ -498,10 +499,10 @@ export default function Home() {
                   margin: 0,
                 }}
               >
-                Every bridge is a promise that someone, somewhere, is still holding your asset.{" "}
-                <span style={{ color: ACCENT }}>Distin removes the promise.</span> Liquidity never
-                leaves the chain it was minted on, settlement never waits on an outside validator, and
-                the only thing you trust is the program you can read.
+                Every bridge is a contract holding custody, and the largest one is always the target.{" "}
+                <span style={{ color: ACCENT }}>Distin holds nothing.</span> A quorum of operators
+                signs natively for the destination chain, the group secret is never reconstructed, and
+                the only thing you trust is a program you can read and a signature you can verify.
               </p>
             </Reveal>
           </div>
@@ -526,14 +527,14 @@ export default function Home() {
                     margin: 0,
                   }}
                 >
-                  Bridged DeFi
+                  Bridge
                   <br />
-                  vs <span style={{ color: ACCENT }}>native.</span>
+                  vs <span style={{ color: ACCENT }}>signature.</span>
                 </h2>
               </div>
               <p style={{ fontSize: 20, color: MUTED, margin: 0, maxWidth: 420, justifySelf: "end" }}>
-                The difference is not a feature list. It is where your asset lives and who can move it
-                while a trade is in flight.
+                The difference is not a feature list. It is whether a contract holds your asset in
+                custody, or whether your account simply signs for itself on the chain that needs it.
               </p>
             </div>
           </Reveal>
@@ -609,9 +610,9 @@ export default function Home() {
                   margin: 0,
                 }}
               >
-                Built without a
+Shares in, one
                 <br />
-                bridge in the path.
+                chain-valid signature out.
               </h2>
             </div>
           </Reveal>
@@ -699,9 +700,9 @@ export default function Home() {
         <div style={{ position: "relative", borderTop: `1px solid ${LINE}`, borderBottom: `1px solid ${LINE}` }}>
           <div className="stats-grid">
             {[
-              { to: 1, suffix: " block", label: "to final settlement" },
-              { to: 100, suffix: "%", label: "of state read on-chain" },
-              { to: 0, suffix: "", label: "external relayers" },
+              { to: 2, suffix: "-of-n", label: "threshold quorum signs, secret never assembled" },
+              { to: 7, suffix: " milestones", label: "built and independently verified, M1 to M7" },
+              { to: 0, suffix: "", label: "wrapped assets, bridge contracts, honeypots" },
             ].map((s, i) => (
               <Reveal key={i} delay={i * 0.1}>
                 <div
@@ -828,11 +829,12 @@ export default function Home() {
                 maxWidth: 1300,
               }}
             >
-              Trade what you can read.
+Verify it yourself.
             </h2>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 40, marginTop: 48 }}>
               <p style={{ fontSize: 21, color: MUTED, margin: 0, maxWidth: 520, lineHeight: 1.55 }}>
-                Native liquidity, single-block settlement, and a state you can verify yourself.
+                Clone the repo, run cargo test and go test, and watch an independent verifier accept a
+                threshold signature the group key never produced in one place.
               </p>
               <button
                 onClick={connectWallet}
@@ -893,7 +895,7 @@ export default function Home() {
           <div>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.02em" }}>Distin</div>
             <div style={{ marginTop: 8, fontSize: 18, color: MUTED }}>
-              Native liquidity on Solana. No bridge.
+              One Solana account. Every chain. No bridges.
             </div>
           </div>
           <div style={{ display: "flex", gap: 16 }}>

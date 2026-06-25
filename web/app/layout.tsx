@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://distin.xyz"),
-  title: "Distin — Liquidity, settled native on Solana",
+  title: "Distin — One Solana account, every chain, no bridges",
   description:
-    "Distin keeps liquidity native to Solana and settles every route inside a single block. No bridge, no wrapped assets, no custodial relays.",
+    "Distin turns Solana into a control plane for cross-chain signing. A quorum of bonded operators threshold-signs a native transaction for any chain, coordinated and slashed on-chain. No bridge, no wrapped assets.",
   openGraph: {
-    title: "Distin — Liquidity, settled native on Solana",
+    title: "Distin — One Solana account, every chain, no bridges",
     description:
-      "Native liquidity on Solana, settled in one block. The bridge, and everything that breaks with it, is gone.",
+      "A quorum of bonded operators threshold-signs a native transaction for any chain, coordinated by a Solana program. The group secret is never reconstructed.",
     url: "/",
     siteName: "Distin",
     images: [
@@ -28,16 +28,16 @@ export const metadata: Metadata = {
         url: "/og.jpg",
         width: 1200,
         height: 630,
-        alt: "Distin — Liquidity, settled native on Solana",
+        alt: "Distin — One Solana account, every chain, no bridges",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Distin — Liquidity, settled native on Solana",
+    title: "Distin — One Solana account, every chain, no bridges",
     description:
-      "Native liquidity on Solana, settled in one block. No bridge.",
+      "Cross-chain threshold signing coordinated on Solana. No bridge, no wrapped assets.",
     images: ["/og.jpg"],
   },
 };

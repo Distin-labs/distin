@@ -19,25 +19,26 @@ export default function DocsPage() {
         style={{ borderColor: "rgba(255,255,255,0.07)" }}
       >
         <Link href="/" className="flex items-center gap-2.5 mb-10">
-          <img src="/logo.png" alt="" width={26} height={26} />
-          <span className="font-bold text-sm tracking-wide">DISTIN Docs</span>
+          <img src="/logo.png" alt="" width={28} height={28} />
+          <span className="font-bold tracking-wide" style={{ fontSize: 18 }}>Distin Docs</span>
         </Link>
         <nav className="flex flex-col gap-1">
           {DOCS_PAGES.map((p, i) => (
             <button
               key={p.slug}
               onClick={() => setActive(i)}
-              className="text-left text-sm px-3 py-2 rounded-lg transition-colors"
+              className="text-left px-3 py-2 rounded-lg transition-colors"
               style={{
+                fontSize: 18,
                 background: i === active ? "rgba(255,255,255,0.06)" : "transparent",
-                color: i === active ? ACCENT : "rgba(255,255,255,0.55)",
+                color: i === active ? ACCENT : "rgba(255,255,255,0.6)",
               }}
             >
               {p.title}
             </button>
           ))}
         </nav>
-        <Link href="/" className="block mt-10 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+        <Link href="/" className="block mt-10" style={{ fontSize: 18, color: "rgba(255,255,255,0.45)" }}>
           ← Back to home
         </Link>
       </aside>
@@ -48,10 +49,11 @@ export default function DocsPage() {
             <button
               key={p.slug}
               onClick={() => setActive(i)}
-              className="text-xs px-3 py-1.5 rounded-full border"
+              className="px-3 py-1.5 rounded-full border"
               style={{
+                fontSize: 18,
                 borderColor: i === active ? ACCENT : "rgba(255,255,255,0.15)",
-                color: i === active ? ACCENT : "rgba(255,255,255,0.55)",
+                color: i === active ? ACCENT : "rgba(255,255,255,0.6)",
               }}
             >
               {p.title}
@@ -64,19 +66,20 @@ export default function DocsPage() {
       </main>
 
       <style>{`
-        .docs-prose h1 { font-size: 2rem; font-weight: 800; margin: 0 0 1rem; }
-        .docs-prose h2 { font-size: 1.4rem; font-weight: 700; margin: 2.2rem 0 0.8rem; color: ${ACCENT}; }
-        .docs-prose h3 { font-size: 1.1rem; font-weight: 600; margin: 1.6rem 0 0.6rem; }
-        .docs-prose p { line-height: 1.8; color: rgba(255,255,255,0.75); margin: 0 0 1rem; }
-        .docs-prose li { line-height: 1.8; color: rgba(255,255,255,0.75); margin: 0.25rem 0 0.25rem 1.2rem; list-style: disc; }
-        .docs-prose code { background: rgba(255,255,255,0.07); padding: 0.15em 0.45em; border-radius: 6px; font-size: 0.88em; }
+        .docs-prose { font-size: 18px; }
+        .docs-prose h1 { font-size: 2.4rem; font-weight: 800; margin: 0 0 1rem; }
+        .docs-prose h2 { font-size: 1.7rem; font-weight: 700; margin: 2.2rem 0 0.8rem; color: ${ACCENT}; }
+        .docs-prose h3 { font-size: 1.3rem; font-weight: 600; margin: 1.6rem 0 0.6rem; }
+        .docs-prose p { font-size: 18px; line-height: 1.8; color: rgba(255,255,255,0.78); margin: 0 0 1rem; }
+        .docs-prose li { font-size: 18px; line-height: 1.8; color: rgba(255,255,255,0.78); margin: 0.25rem 0 0.25rem 1.2rem; list-style: disc; }
+        .docs-prose code { background: rgba(255,255,255,0.07); padding: 0.15em 0.45em; border-radius: 6px; font-size: 1em; }
         .docs-prose pre { background: #111; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1rem 1.2rem; overflow-x: auto; margin: 0 0 1.2rem; }
-        .docs-prose pre code { background: transparent; padding: 0; }
+        .docs-prose pre code { background: transparent; padding: 0; font-size: 18px; }
         .docs-prose table { border-collapse: collapse; margin: 0 0 1.2rem; width: 100%; }
-        .docs-prose th, .docs-prose td { border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem 0.8rem; text-align: left; font-size: 0.9rem; }
+        .docs-prose th, .docs-prose td { border: 1px solid rgba(255,255,255,0.1); padding: 0.55rem 0.85rem; text-align: left; font-size: 18px; }
         .docs-prose th { background: rgba(255,255,255,0.04); }
         .docs-prose a { color: ${ACCENT}; text-decoration: underline; }
-        .docs-prose blockquote { border-left: 3px solid ${ACCENT}; padding-left: 1rem; color: rgba(255,255,255,0.6); margin: 0 0 1rem; }
+        .docs-prose blockquote { border-left: 3px solid ${ACCENT}; padding-left: 1rem; color: rgba(255,255,255,0.65); margin: 0 0 1rem; font-size: 18px; }
       `}</style>
     </div>
   )

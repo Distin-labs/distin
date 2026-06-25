@@ -6,15 +6,28 @@ Source: github.com/distin-xyz/distin · Site: distin.xyz
 This file holds the numbered X thread and the screenshot/video shotlist. The
 standalone posts, longer take, comparison, and FAQ answers live in `campaign.md`.
 
-All copy is English. No em-dashes. Status is honest: the program is deployed on
-**devnet** and the core flow runs end to end. Do not write "live" or "launched"
-as if this were mainnet.
+All copy is English. No em-dashes. The status line is honest: the off-chain
+threshold signing is built and independently verified; the program is deployed
+and live on **devnet**. Mainnet, audit, and networked-operator hardening are
+not done, and the copy never pretends otherwise.
 
-Pulled from the real engine (`engine/programs/distin/src/lib.rs`, `state.rs`,
-`errors.rs`). Ground truth used here: 6 PDA seeds (protocol, bond_vault,
-slash_pool, operator, request, partial), 5 `TargetVm` families (Svm, Evm, Tron,
-Cosmos, Bitcoin), 2 schemes (FrostEd25519, Gg20Secp256k1), 23 error codes, 15
-instructions.
+Ground truth (verified against the real engine, not the demoware draft):
+- FROST Ed25519, 2-of-3, ZF `frost-ed25519` crate, aggregate accepted by the
+  independent `ed25519-dalek` verifier. `engine/kobe`, `cargo test` (~10s).
+- GG20 threshold ECDSA, 2-of-3, secp256k1, Binance `tss-lib` v2; the `(r,s,v)`
+  ecrecovers under go-ethereum to the group address. `engine/kobe-ecdsa`,
+  `go test` (~110s). Same signer proven native-valid on BTC (BIP-143, verified
+  by decred secp256k1) and Tron.
+- M7: three OS processes (distinct PIDs, ports, identity keys, share files) run
+  the GG20 DKG and a 2-of-3 sign over Ed25519-authenticated TCP, triggered by an
+  on-chain request. `engine/kobe-ecdsa/net`, `engine/coordinator` net-demo.
+- On-chain Anchor program: 6 PDA seeds (protocol, bond_vault, slash_pool,
+  operator, request, partial), 5 `TargetVm` (Svm, Evm, Tron, Cosmos, Bitcoin),
+  2 schemes (FrostEd25519, Gg20Secp256k1), 22 error codes. The fake byte-fold
+  "signature" was removed; `aggregate_and_emit` takes the real off-chain
+  aggregate and enforces threshold + slot deadline.
+- Deployed live on Solana devnet at `4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6`,
+  deploy tx `3LAt17P8Zmh2EYyphzVF4EHNY1uffkaJp7cp4V2yUpNh3MoV82iP5mEvdg18XMBUnKwANDGANCj43mEVRJUh6ZAQ`.
 
 ---
 
@@ -22,337 +35,467 @@ instructions.
 
 ### Screenshots (S1–S7)
 
-S1: On-chain program confirmation
+S1: The test passing (the whole thesis in one frame)
+- Tag: #ProveItYourself
+- Frame: a terminal in `engine/kobe` after `cargo run --example frost_demo`. The
+  `group pubkey`, the 64-byte `signature`, and the `VERIFIED — 2 of 3 shares
+  produced a valid standard Ed25519 signature, and the group secret was never
+  reconstructed.` block all in one shot.
+- Crop: the command line at top, the VERIFIED block at bottom. Nothing else.
+- Caption (in tweet body): "Two of three key shares. One signature `ed25519-dalek` accepts. The group secret is never assembled. Run it yourself."
+
+S2: GG20 test output, all green
+- Tag: #ThresholdECDSA
+- Frame: `engine/kobe-ecdsa` after `go test -v`. The PASS lines for
+  `TestTwoOfThreeRecoversGroupEthAddress`, `TestSignatureIsEthWireFormat`
+  (go-ethereum accepts it), `TestBtcThresholdSignVerifies` (decred secp256k1
+  accepted the DER signature), and `TestAnyTwoOfThreeQuorum`.
+- Crop: from the first `--- PASS` through `ok  github.com/distin/kobe-ecdsa`.
+- Caption: "2-of-3 threshold ECDSA. The `(r,s,v)` ecrecovers under go-ethereum to the group address. Same signature is native-valid on Bitcoin and Tron."
+
+S3: On-chain program confirmation
 - Tag: #ProgramVerification
-- Frame: Solana Explorer (devnet) search result for 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
-- Crop: browser URL bar (showing ?cluster=devnet) + Program ID + "Executable: Yes" + the BPF Upgradeable Loader line. Cut the rest of the page.
-- Caption: none. Let the program address and the "Executable" status speak for themselves.
+- Frame: Solana Explorer (devnet) for 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
+- Crop: URL bar (showing ?cluster=devnet) + Program ID + "Executable: Yes" + the
+  BPF Upgradeable Loader line. Cut the rest.
+- Caption: none. Let the address and "Executable" speak.
 
-S2: PDA seed declarations
-- Tag: #AccountStructure
-- Frame: state.rs showing PROTOCOL_SEED, BOND_VAULT_SEED, SLASH_POOL_SEED, OPERATOR_SEED, REQUEST_SEED, PARTIAL_SEED, all 6 in one shot.
-- Crop: the comment + the 6 seed declarations centered. Push the use statements above the fold.
-- Caption (in tweet body, no overlay on the image): "6 PDA namespaces. Every signing round is a traceable on-chain state machine."
-
-S3: SignatureScheme + TargetVm enums
+S4: SignatureScheme + TargetVm enums
 - Tag: #SchemeBranch
-- Frame: state.rs SignatureScheme enum (FrostEd25519, Gg20Secp256k1) and the TargetVm enum (Svm, Evm, Tron, Cosmos, Bitcoin).
-- Crop: both enum blocks with their doc comments. Dark editor theme, line numbers visible.
-- Caption (in tweet): "FROST Ed25519 for the SVM family. GG20 secp256k1 for EVM, Bitcoin, Tron, Cosmos. Branched at the instruction level."
+- Frame: state.rs SignatureScheme (FrostEd25519, Gg20Secp256k1) and TargetVm
+  (Svm, Evm, Tron, Cosmos, Bitcoin), both with doc comments.
+- Caption: "FROST Ed25519 for the SVM family. GG20 secp256k1 for EVM, Bitcoin, Tron, Cosmos. Branched at the instruction level. A mismatched partial gets SchemeMismatch."
 
-S4: Error code set
+S5: Error code set
 - Tag: #ThresholdEnforcement
-- Frame: errors.rs in full. ThresholdNotMet, RequestExpired, OperatorJailed, MalformedPartialSignature, SchemeMismatch, RequestAlreadyFinalized all visible.
-- Crop: the whole error block. The file is short enough to capture entirely.
-- Use: attach to tweet 11 (Conviction). The error codes stand in for the security-model writeup.
+- Frame: errors.rs in full. ThresholdNotMet, RequestExpired, OperatorJailed,
+  MalformedPartialSignature, SchemeMismatch, RequestAlreadyFinalized visible.
+- Use: attach to tweet 10. 22 invariants, one per code.
 
-S5: LST bonding transaction
+S6: M7 networked operators
+- Tag: #NetworkedSigning
+- Frame: three terminals side by side, three operator processes (distinct PIDs
+  and ports visible), the GG20 DKG and 2-of-3 sign running over TCP, ending in
+  the ecrecover-matches-group line.
+- Caption: "Three separate processes. Three share files. One 2-of-3 signature over authenticated TCP, triggered by an on-chain request."
+
+S7: LST bonding transaction
 - Tag: #EconomicSecurity
-- Frame: the real devnet transaction where a Token-2022 TransferChecked moved LST into the bond_vault PDA.
-- Crop: instruction name + account list (operator, bond_vault, mint, token program) + "Success".
+- Frame: the real devnet tx where a Token-2022 TransferChecked moved LST into the
+  bond_vault PDA.
 - Caption: "Operators lock LST via Token-2022 TransferChecked into the bond_vault PDA. Slashable on equivocation."
-
-S6: Partial signature submissions, three in a row
-- Tag: #PartialAggregation
-- Frame: three submit_partial_signature transactions from three different operator pubkeys, placed side by side.
-- Crop: each transaction's signer address + instruction name + slot number. The slot numbers should read as consecutive.
-- Caption: "Each operator submits a partial as a Solana tx. Staked weight accumulates per slot until the threshold clears."
-
-S7: Oracle price feed rejection
-- Tag: #CollateralCheck
-- Frame: a transaction that hit StaleOraclePrice or InvalidOracleAccount.
-- Crop: the error message + the error code number.
-- Use: operator-onboarding tweet. Optional in the main thread.
 
 ### Videos (V1–V3)
 
-V1: Main product demo
-- Tag: #ProductDemo
-- Length: 45–60s
+V1: The two-minute proof, screen-recorded
+- Tag: #ProveItYourself
+- Length: 90–120s
 - Shots:
-  1. A Solana wallet. Balance shows native BTC (not wBTC; emphasize "native").
-  2. The user runs "send BTC". The signing intent is submitted as a Solana transaction.
-  3. Solana Explorer confirms it. The SigningRequest PDA is created. Slot number and deadline slot visible.
-  4. A slot or two later, several PartialSignature PDAs appear in Explorer. Real-time without a refresh is best.
-  5. Staked-weight accumulation: the request account's accumulated weight field climbing.
-  6. The aggregate_and_emit transaction confirms. Status flips to Aggregated.
-  7. After the aggregate signature is emitted, a relayer broadcasts to Bitcoin (relayer log in a terminal).
-  8. Bitcoin Explorer shows the real UTXO move. txid visible.
-  9. Elapsed-time overlay: how many 400ms slots the whole coordination took.
-  10. Pin the program address at the bottom, then fade to the logo.
-- Audio: none. English captions only. No narration.
+  1. A clean clone. `cd engine/kobe`. `cargo test`. Three green tests, including
+     `one_share_cannot_sign - should panic ... ok` and
+     `two_of_three_aggregate_is_a_valid_ed25519_signature ... ok`.
+  2. `cargo run --example frost_demo`. The group pubkey, the 64-byte signature,
+     the VERIFIED block. Pause on it.
+  3. `cd ../kobe-ecdsa`. `go test -v`. Let it run. The PASS lines land one by
+     one: ecrecover matches, go-ethereum accepts, decred accepts the BTC DER,
+     Tron recovers.
+  4. No cuts that skip a step. The point is that nothing is hidden.
+- Audio: none. English captions only.
 - Ratio: 16:9
 
-V2: Architecture diagram animation
+V2: The on-chain coordination loop
 - Tag: #Architecture
 - Length: 25–35s
 - Shots:
-  1. A "Solana" box at center with a "(control plane)" sublabel.
-  2. An arrow from the user icon into the Protocol PDA, labeled "signing intent".
-  3. Several operator nodes each connect to a PartialSignature PDA.
-  4. A staked-weight bar fills. The moment it crosses the threshold line, the color changes.
-  5. An "aggregate sig" icon emits out of the Solana box.
-  6. A relayer icon picks it up and branches to EVM, BTC, Tron, Cosmos icons.
-  7. "No lockup contract" overlays on each destination chain in turn.
-- Audio: none
-- Ratio: 16:9
+  1. A "Solana" box at center, sublabel "(control plane)".
+  2. An arrow from the user into a SigningRequest PDA, labeled "32-byte intent".
+  3. Operator nodes each emit a PartialSignature PDA.
+  4. A staked-weight bar fills; at the threshold line the color flips.
+  5. `aggregate_and_emit` records the real off-chain aggregate on-chain.
+  6. A relayer picks it up and branches to EVM, BTC, Tron, Cosmos icons.
+  7. "No lockup contract" overlays each destination in turn.
+- Audio: none. Ratio: 16:9.
 
-V3: Slashing mechanism
+V3: Slashing
 - Tag: #EconomicSecurity
 - Length: 20–25s
 - Shots:
-  1. An operator locks LST into the bond_vault PDA. Label: "Token-2022 TransferChecked".
-  2. The operator tries to submit partials to two conflicting requests at once.
-  3. The program jails the operator. The operator icon turns red.
-  4. The bond_vault balance moves to the slash_pool PDA immediately. Text: "slashed on-chain, no governance vote".
-- Audio: none
-- Ratio: 16:9
+  1. An operator locks LST into bond_vault. Label "Token-2022 TransferChecked".
+  2. The operator submits partials to two conflicting requests.
+  3. The program jails it; the icon turns red.
+  4. bond_vault balance moves to slash_pool in the same instruction. Text:
+     "slashed on-chain, no governance vote".
+- Audio: none. Ratio: 16:9.
 
 ### Production notes
 
-- S5 and S6 must be real on-chain transactions. No mock data, no test screenshots, no composites. The Solana Explorer URL must be visible in the address bar, with ?cluster=devnet.
-- The V1 demo must run end to end without edit cuts that skip a step. Cutting out a stage reads as hiding something.
-- The program address 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6 must appear in every screenshot and video. If it is not on screen, add it as a caption.
-- Tone: dark backgrounds. No neon, no glow, no CRT. The default Solana Explorer UI colors are fine to keep.
-- Build V2 in Figma or Excalidraw and render it as an animation, not a screen recording.
-- Captions are English only.
-- After compression for upload, keep text large enough that Twitter's recompression does not blur it (font at least 1/20 of frame height).
+- S3, S6, S7 must be real on-chain or real process output. No mock data, no
+  composites. Explorer URL visible with ?cluster=devnet.
+- V1 is the most important asset in the whole campaign. It must run clean from a
+  fresh clone with no edit cuts. A cut that skips a test reads as hiding one.
+- The program address 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6 appears in
+  every on-chain screenshot and video, or it goes in the caption.
+- Tone: dark backgrounds. No neon, no glow, no CRT. Default Explorer colors fine.
+- Captions English only. After upload compression, keep text at least 1/20 of
+  frame height so it survives recompression.
 
 ---
 
 ## 1/ Greeting
 
-Distin.
+Distin lets one Solana account hold native signing authority over Bitcoin,
+Ethereum, Tron, and Cosmos. No bridge contract, no wrapped asset, on any chain.
 
-One Solana account holds signing authority over native assets on every major chain. No bridge contract on any destination.
+If that sounds like the kind of claim you should distrust, good. So the whole
+thing is built to be checked. Two commands, two minutes, and you watch a real
+threshold signature get accepted by the destination chain's own verifier.
 
 Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
-Source: github.com/distin-xyz/distin
-Site: distin.xyz
-
-This thread covers the full coordination mechanism.
+Source: github.com/distin-xyz/distin · Site: distin.xyz
 
 ---
 
-## 2/ Problem
+## 2/ The receipt, first
 
-Every bridge moves a wrapped IOU, not the real asset.
+```
+cd engine/kobe && cargo test
+```
 
-So a lockup contract sits on the source chain holding actual BTC or ETH. That contract publishes how much it holds. It exists for as long as the bridge exists. Every day it exists, it is a target.
+That runs a 2-of-3 FROST Ed25519 ceremony and then verifies the result under
+`ed25519-dalek` directly, the same RFC 8032 primitive a Solana validator runs.
+Two of three operators sign. The third stays offline. The group secret is never
+assembled anywhere, on any machine, at any point.
 
-The exploit history is not a run of sloppy code. It is structural. The lockup contract has to exist for the model to work, and the contract is the thing that gets drained.
+It also asserts the failures: one share alone can't sign, a tampered signature
+is rejected, the wrong group key is rejected. A green run can't be a false
+positive, because the negative cases are in the same suite.
+
+[attach S1]
 
 ---
 
-## 3-1/ Solution
+## 3/ The other curve
 
-Distin coordinates threshold signatures on Solana. An off-chain relayer takes the aggregate signature and broadcasts a native transaction on the destination chain.
+```
+cd engine/kobe-ecdsa && go test -v -timeout 600s
+```
 
-No lockup contract on Bitcoin holding real UTXOs. Nothing on Ethereum. The honeypot address that every bridge exploit has targeted does not exist, because there is nothing to lock up.
+Same idea, harder math: 2-of-3 GG20 threshold ECDSA over secp256k1, the curve
+Ethereum, Bitcoin, and Tron all run. The `(r,s,v)` it produces ecrecovers, under
+go-ethereum's own `Ecrecover`, to the address derived from the group key. That is
+the exact check an Ethereum node performs.
 
-Operators produce one signature. The destination chain accepts it as native. That is the whole surface difference.
+The same signer is proven native-valid on Bitcoin (a BIP-143 sighash, accepted
+by the decred secp256k1 library, a different library than the one that signed)
+and on Tron. Takes about 110 seconds. Safe-prime DKG is genuinely slow, and we
+left the real timing in.
+
+[attach S2]
 
 ---
 
-## 3-2/ Solution
+## 4/ Why this matters
 
-The on-chain coordination flow, step by step.
+Every bridge moves a wrapped IOU, not the real asset. So a lockup contract sits
+on the source chain holding actual BTC or ETH, publishing how much it holds,
+reachable from any laptop on earth, for as long as the bridge exists.
 
-Operators bond LST (Token-2022) into a bond_vault PDA as slashable collateral. A user posts a signing intent: destination VM, signature scheme, message hash, slot deadline. Each operator submits a PartialSignature PDA. The program accumulates staked weight. Threshold clears before the deadline: finalized, aggregate signature emitted. Threshold does not clear: RequestExpired, the user reposts.
+The exploit history is not a run of sloppy code. The lockup has to exist for the
+model to work, and the lockup is the thing that gets drained.
+
+Distin has no lockup. The asset never moves. The only thing that crosses a chain
+is the signature you just watched verify.
+
+---
+
+## 5/ How the pieces fit
+
+The cryptography is off-chain (it has to be; that is where shares stay split).
+The coordination is on-chain, on Solana.
+
+A user posts a 32-byte intent to a SigningRequest PDA: destination VM, scheme,
+message hash, slot deadline. Each operator submits a PartialSignature PDA. The
+program accumulates staked weight. Threshold clears before the deadline,
+`aggregate_and_emit` records the real off-chain aggregate on-chain. It doesn't
+clear, RequestExpired, the user reposts.
 
 Every step is a Solana instruction. Every state is an on-chain account.
 
 ---
 
-## 3-3/ Solution
+## 6/ The branch
 
-The signing scheme branches at the instruction level.
+The signing scheme is fixed on the request and branches at the instruction level.
 
-FROST Ed25519 for the SVM family, where Ed25519 is native. GG20 secp256k1 for EVM, Bitcoin, Tron, and Cosmos, where the destination expects ECDSA over secp256k1.
+FROST Ed25519 for the SVM family, where Ed25519 is native. GG20 secp256k1 for
+EVM, Bitcoin, Tron, and Cosmos, where the destination wants ECDSA.
 
-If a submitted partial does not match the scheme declared in the SigningRequest, the program throws SchemeMismatch. Hard rejection. No fallback, no coercion across curve families.
-
-[attach S3]
-
----
-
-## 4/ Why now
-
-Multi-round MPC has existed for years. FROST published in 2020. GG20 published in 2020. The cryptography was never the bottleneck.
-
-Coordination latency was. FROST and GG20 both need several communication rounds between signers. If each round settles on a 12-second chain, a three-round protocol takes 36 seconds minimum. That is not a UX problem. It is a liveness problem: operators drop offline across a window that long, and signing fails more the more operators you add.
-
-Solana's 400ms slot changes the arithmetic. A three-round sequence settles in under two seconds. Now the coordination is fast enough to be practical.
-
----
-
-## 5/ Vision
-
-Picture one Solana keypair as your signing authority on BTC, Ethereum, Tron, Cosmos, and other SVM chains.
-
-You post a signing intent. Operators clear the staked-weight threshold within a slot or two. A relayer broadcasts the native transaction on the destination. No wrapping step. No synthetic token in your wallet. No counterparty holding your real asset behind an address.
-
-The cross-chain account abstraction other protocols sell as a product is, here, a coordination protocol with slashable collateral sitting under it.
-
----
-
-## 6/ Only here
-
-Solana at 400ms per slot is the one structural requirement for this design: a control plane that settles rounds faster than operators drop offline. No other L1 at scale delivers that.
-
-The full accountability loop closes inside one Anchor program. Operators bond, get jailed, get slashed, and serve unbonding cooldowns through the same program that coordinates their signing. No separate slashing contract. No off-chain governance step between bad behavior and economic consequence.
-
----
-
-## 7/ Product demo [V1]
-
-A signing intent is posted as a Solana instruction. Operators submit partials across slots. The staked-weight threshold clears. The aggregate signature is relayed to Bitcoin as a native transaction.
-
-No wrapped token. No bridge UI. One Solana account.
-
-Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
-
-[attach V1]
-
----
-
-## 8/ Before vs after
-
-Sending BTC cross-chain, before:
-
-A bridge contract locks real BTC on Bitcoin mainnet. You receive wBTC on the other side. The lockup contract holds nine figures in real assets and can be reached from anywhere on the internet.
-
-Sending BTC cross-chain, after:
-
-A Solana account posts a signing intent. Operators coordinate a GG20 secp256k1 aggregate through the on-chain program. A relayer broadcasts a native Bitcoin transaction. A UTXO moves on Bitcoin mainnet with nothing locked anywhere.
-
-Same action from your side. A completely different thing for an attacker to point at, because there is nothing to point at.
-
----
-
-## 9/ Builder log
-
-What is on-chain and verifiable now, on devnet.
-
-A Protocol singleton PDA with an operator registry. LST bonding and unbonding via Token-2022 TransferChecked into the bond_vault PDA. Staked-weight accumulation per SigningRequest account. Slot-deadline enforcement with RequestExpired. An OperatorJailed state that blocks participation. Oracle price-feed validation for collateral. SchemeMismatch rejection at partial submission. Slash execution into the slash_pool PDA with no intermediate step.
-
-The signing libraries that combine the cryptographic shares are stubbed with doc comments that mark the exact handoff boundary between on-chain accounting and off-chain share combination.
-
----
-
-## 10/ Traction
-
-5 destination VM families handled in one program. FROST Ed25519 for the SVM family. GG20 secp256k1 for EVM, Bitcoin, Tron, and Cosmos secp256k1 variants.
-
-The unbonding cooldown is checked at instruction level against the current slot. An operator cannot begin withdrawing collateral while a signing window they took part in is still open.
-
-23 error codes, each mapped to a specific invariant in the security model.
+Submit a partial that doesn't match the scheme declared in the request and the
+program throws SchemeMismatch. Hard reject. No coercion across curve families.
 
 [attach S4]
 
 ---
 
-## 11/ Conviction
+## 7/ Why now, why Solana
 
-Why staked weight beats signer count.
+The cryptography is five years old. FROST published in 2020, GG20 in 2020. Nobody
+was waiting on a math breakthrough.
 
-A t-of-n scheme that counts heads can be attacked by spinning up many low-collateral operators. A staked-weight threshold means an attacker has to acquire a meaningful fraction of the total bonded LST pool. The cost of corrupting the signing set scales with total collateral, not with how many participants there are.
+What was missing was a place to run the coordination. FROST is 3 rounds, GG20 is
+~6, and signers have to see round N before computing round N+1. On a 12-second
+chain a three-round ceremony takes 36 seconds minimum, long enough for operators
+to drop offline between rounds, so signing fails more the more you decentralize.
 
-Slashing makes it binding. When an operator equivocates, their bond_vault balance moves to the slash_pool in the same transaction that catches the equivocation. No dispute window. No governance delay. The consequence lands immediately.
-
-[attach S4]
+Solana settles a slot every ~400ms. The same ceremony finishes in seconds of
+wall-clock time. That is the whole reason the control plane lives here.
 
 ---
 
-## 12/ Rebuttal
+## 8/ Networked, not a single binary
+
+The shares don't sit in one process pretending to be three.
+
+In the M7 path, three separate OS processes run the show: distinct PIDs, distinct
+ports, distinct Ed25519 identity keys, distinct share files. They run the GG20
+DKG and a 2-of-3 sign over authenticated TCP. An on-chain request triggers it.
+The resulting wire signature ecrecovers to the group address.
+
+It's localhost today, not a hardened network. We say exactly that below. But the
+distributed signing path is real and runs end to end.
+
+[attach S6]
+
+---
+
+## 9/ What's on-chain and verifiable now
+
+On devnet at 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6:
+
+A Protocol singleton with an operator registry. LST bonding and unbonding via
+Token-2022 TransferChecked into the bond_vault PDA. Staked-weight accumulation
+per SigningRequest. Slot-deadline enforcement with RequestExpired. An
+OperatorJailed state that blocks participation. SchemeMismatch rejection at
+submission. Slash execution into the slash_pool PDA with no intermediate step.
+
+`aggregate_and_emit` takes the real off-chain aggregate as input and enforces
+threshold and deadline. The earlier draft folded bytes together and called it a
+signature. That fake was removed. The aggregate the program records is the one
+the test in tweet 2 just verified.
+
+---
+
+## 10/ The numbers
+
+5 destination VM families in one program. 2 schemes. 6 PDA namespaces, so every
+signing round is a deterministically addressable state machine. 22 error codes,
+each mapped to one invariant.
+
+The unbonding cooldown is checked at the instruction level against the current
+slot. An operator cannot start withdrawing collateral while a signing window they
+took part in is still open. Otherwise you sign, you unbond, you walk, and the
+slash hits an empty account.
+
+[attach S5]
+
+---
+
+## 11/ Why staked weight, not headcount
+
+A t-of-n scheme that counts heads is beaten by spinning up many cheap operators.
+
+Distin thresholds on staked weight. To corrupt a signing round an attacker needs
+a meaningful fraction of the total bonded LST, so the cost of corruption scales
+with the collateral pool, not with the number of keyholders.
+
+Slashing makes it binding. When an operator equivocates, their bond_vault balance
+moves to the slash_pool in the same transaction that catches it. No dispute
+window. No governance delay.
+
+[attach S5]
+
+---
+
+## 12/ The relayer question, answered straight
 
 "The off-chain relayer is still a trusted component."
 
-It is. The relayer broadcasts the aggregate signature but cannot forge it. If it goes offline, signing requests expire at their slot deadline and users repost. If it submits a malformed transaction, the destination chain rejects it, because the signature does not verify. The relayer's failure mode is liveness, not safety.
+It is. The relayer broadcasts the aggregate signature but cannot forge it. Go
+offline and requests expire at their slot deadline and users repost. Submit a
+malformed transaction and the destination chain rejects it, because the signature
+doesn't verify. Its failure mode is liveness, not safety.
 
-The operators, where the actual cryptographic power sits, are bonded on-chain and slashable. The trust that can steal from you is bonded and visible.
+The power that can actually steal from you, producing the signature, sits with
+operators who are bonded on-chain and slashable. We put the dangerous trust
+behind staked collateral and left the harmless trust in a part anyone can replace.
 
 ---
 
 ## 13/ The name
 
-Distin is short for "distinct".
+Distin is short for distinct.
 
-The point of the system is that two things people usually fuse stay separate: the asset, and the authority to spend it. Your BTC stays on Bitcoin. The authority to move it travels as one signature, produced on demand by bonded operators. Asset here, authority there, kept distinct on purpose.
-
-That is the design principle, not a label stuck on afterward. We started building after hitting the same wall over and over: native cross-chain asset control and wrapping-free composability would not coexist under any existing model. This program is the attempt to close that gap at the signing layer.
+Two things people usually fuse stay separate: the asset, and the authority to
+spend it. Your BTC stays on Bitcoin. The authority travels as one signature,
+produced on demand by bonded operators. Asset here, authority there, distinct on
+purpose. That is the design, not a label stuck on after.
 
 ---
 
-## 14/ Devnet status
+## 14/ What's real, and what's next
 
-Distin is a threshold-signature coordination layer running on Solana devnet.
+Real and independently verified, today: FROST Ed25519 and GG20 ECDSA threshold
+signing, 2-of-3, accepted by ed25519-dalek and go-ethereum; BTC and Tron native
+envelopes; the on-chain coordination loop end to end; networked operators over
+TCP; the reconciled program live on devnet.
 
-Native asset control across SVM, EVM, Bitcoin, Tron, and Cosmos. One Solana account. Slashable operator collateral. No lockup contract on any destination chain.
-
-We have driven the core path on devnet: initialize the protocol, register a bonded operator, post a signing intent. create_signing_request confirms as an ordinary Solana transaction. Testing stage, not a mainnet launch.
+Not done, and not claimed: the networked path is localhost, no TLS or PKI yet,
+fail-stop instead of identifiable abort, shares in files not an HSM. This
+integration and the on-chain program are not audited. Mainnet is gated behind a
+verified devnet run. No partners, no audit badge, no token.
 
 Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
-Source: github.com/distin-xyz/distin
-Site: distin.xyz
+Source: github.com/distin-xyz/distin · Site: distin.xyz
+
+If a thread sells you a cross-chain primitive with no weaknesses, close the tab.
+Ours are right here, and so is the test that proves the part that does work.
 
 ---
 ---
 
 # X Article: Distin
 
-# Signing authority, not assets
+# You can watch the impossible-sounding part verify in two minutes
 
-## The problem
+The claim is small and hard to believe: one Solana account can hold native
+signing authority over Bitcoin, Ethereum, Tron, and Cosmos, with no bridge
+contract and no wrapped asset anywhere. The reason it is hard to believe is the
+reason every line of this is built to be checked. So before any architecture,
+here is the check.
 
-Every cross-chain architecture you have used runs on the same premise: move representations of value across chains, and keep the real asset locked somewhere on the source side. A bridge contract holds actual BTC on Bitcoin while you hold a claim token on Ethereum. A messaging protocol carries proofs of balances while the balances themselves stay locked. The locked asset is the core assumption. It is also why every major bridge exploit has run the same script: find the lockup address, drain what is behind it.
+## Run it
 
-The lockup is not a sloppy detail that better engineers would have avoided. It is the mechanism. The bridge model only works because real assets sit behind a publicly reachable address. The attack is not a bug in the bridge. It is a property of the model.
+```
+cd engine/kobe && cargo test
+```
 
-So the question that matters is whether you can give a user native asset control across several chains without ever creating an address that holds those assets on their behalf. Not wrapped tokens. Not locked collateral. Portable cryptographic signing authority, and assets that never move from where the user placed them.
+This runs a 2-of-3 FROST Ed25519 ceremony, keygen through aggregate, and then
+verifies the result two ways: under FROST's own verify path, and under the
+independent `ed25519-dalek` crate, which is the exact RFC 8032 primitive a Solana
+or Cosmos chain runs. Two of three operators sign, the third stays offline, and
+the group secret is never reconstructed on any machine at any point. The same
+suite asserts that one share alone cannot sign, that a tampered signature fails,
+and that the wrong group key fails. A green run cannot be a false positive,
+because the negative cases ride in the same file.
 
-## Why now
+```
+cd engine/kobe-ecdsa && go test -v -timeout 600s
+```
 
-The threshold signature schemes that could do this have existed for years. FROST, the Schnorr threshold protocol used for Ed25519 chains, was published in 2020. GG20, the threshold ECDSA construction for secp256k1 that covers Ethereum, Bitcoin, and Tron, was published the same year. The cryptography was ready long before any practical deployment showed up.
+This runs 2-of-3 GG20 threshold ECDSA over secp256k1, the curve under Ethereum,
+Bitcoin, and Tron. The `(r,s,v)` it produces recovers, under go-ethereum's own
+`Ecrecover`, to the address derived from the group public key. That is precisely
+what an Ethereum node does to a transaction. The same signer is then proven
+native-valid on Bitcoin, a BIP-143 sighash DER-encoded and accepted by the decred
+secp256k1 library, a different library than the one that signed, and on Tron,
+where the recovered address matches a known vector. It takes about 110 seconds,
+because safe-prime DKG is genuinely slow, and we left the real timing in rather
+than trimming it for a cleaner number.
 
-The blocking problem was coordination latency. Both protocols need several synchronous rounds between signing parties before they produce output. A signer has to see everyone's contribution from round N before computing round N+1. If your coordination layer settles a round every 12 seconds, a three-round ceremony takes at least 36 seconds end to end. That window is long enough for operators to go offline between rounds, so liveness failures pile up in proportion to operator count. The larger and more decentralized your signer set, the less reliable your signing gets.
+That is the thesis, reproducible from a clean clone: shares in, one chain-valid
+signature out, verified by the destination chain's own primitive, never the
+secret key.
 
-Solana settles a slot every 400 milliseconds. A three-round sequence completes in well under two seconds. This is not a marginal latency win. It is the difference between multi-round MPC being impractical as a real-time signing service and being fast enough that users never feel the coordination happening. Slow chains cannot serve as the control plane for this architecture. Solana can.
+## Why anyone should care
+
+Every cross-chain system you have used moves a representation and locks the
+original. A bridge contract holds real BTC on Bitcoin while you hold a claim
+token on Ethereum. The locked asset is not a detail a better engineer would have
+avoided. It is the mechanism. The bridge only works because real value sits
+behind a publicly reachable address, and every major drain ran the same script:
+find the lockup, take what is behind it.
+
+Distin removes the address. The asset never moves. The only thing that crosses a
+chain is the signature you just watched verify, produced the moment you decide to
+spend it by a set of bonded operators who jointly sign without any one of them
+holding the key.
 
 ## How it works
 
-Distin is an Anchor program. The on-chain layer is responsible for four things: economic security, state accounting, threshold enforcement, and liveness. The actual cryptographic share combination happens off-chain in the signing libraries. I will say that plainly, because conflating the two would misrepresent what the program does.
+The cryptography is off-chain, because that is where the shares stay split. The
+coordination is on-chain, on Solana, and that split is the whole design.
 
-An operator who wants to sign bonds a Token-2022 LST into the bond_vault PDA. The bond is the basis for their staked weight in the signing set, measured in basis points of the total collateral pool. Threshold clearing is a staked-weight calculation, not a headcount. An attacker who wants to corrupt a signing round needs a meaningful fraction of the total bonded LST. The cost of corruption scales with the collateral pool, not with the number of keyholders.
+An operator who wants to sign bonds a Token-2022 LST into the bond_vault PDA. The
+bond is their staked weight in the signing set, measured against the total
+collateral pool. Threshold clearing is a staked-weight calculation, not a
+headcount, so the cost of corrupting a round scales with the collateral, not with
+the number of keyholders.
 
-A user who wants to control BTC from their Solana account posts a signing intent to a SigningRequest PDA. The intent names the destination VM family, the signature scheme (FrostEd25519 or Gg20Secp256k1), a message hash, and a slot deadline. Each participating operator submits a PartialSignature PDA. The program checks that the operator is active and not jailed, that the scheme matches the one declared in the request, and that the slot deadline has not passed. It adds the operator's staked weight to a running accumulator. Once accumulated weight crosses the protocol threshold, the aggregate_and_emit instruction closes the request and the aggregate signature is ready for a relayer to pick up.
+A user posts a signing intent to a SigningRequest PDA: the destination VM, the
+scheme (FrostEd25519 or Gg20Secp256k1), a 32-byte message hash, and a slot
+deadline. Each participating operator submits a PartialSignature PDA. The program
+checks the operator is active and not jailed, that the scheme matches the request,
+and that the deadline has not passed, then adds the operator's staked weight to an
+accumulator. Once weight crosses the threshold, `aggregate_and_emit` records the
+real off-chain aggregate on-chain and closes the request. An earlier version of
+the program folded bytes together and called the result a signature. That fake
+was removed. The aggregate the program now records is the same kind of aggregate
+the tests above verify.
 
-The relayer is the honest limitation, so I will name it directly. It is an off-chain component. It cannot forge the aggregate signature, and if it submits a malformed transaction the destination chain rejects it, because the signature will not verify. Its failure mode is liveness: if it goes offline, requests expire at their slot deadline and users repost. But you are trusting it for liveness, and that is worth knowing before you build on top.
+The relayer is the honest limitation, so name it directly. It broadcasts the
+aggregate signature. It cannot forge it, and a malformed transaction is rejected
+by the destination chain because the signature will not verify. If it goes
+offline, requests expire and users repost. You are trusting it for liveness, not
+safety, and that is worth knowing before you build on it.
 
-When an operator equivocates by submitting valid partials to two conflicting requests in the same slot window, their bond_vault balance moves to the slash_pool PDA in the same transaction that catches the equivocation. No governance process. No dispute window. The program executes the slash immediately, as part of the same instruction that detects the conflicting state.
+When an operator equivocates by submitting valid partials to two conflicting
+requests in the same window, their bond_vault balance moves to the slash_pool PDA
+in the same transaction that catches the conflict. No governance process, no
+dispute window. The slash is part of the instruction that detects the fault.
 
-The off-chain signing libraries are where the cryptographic share combination lives. They handle the actual FROST and GG20 round computations. The on-chain program marks the integration points and trusts that operators run the correct signing software. The staked collateral is what makes that trust bounded and economic instead of purely social.
+## Networked, and honest about how far
+
+The signing is not one process pretending to be three. In the M7 path, three
+separate OS processes, with distinct PIDs, ports, Ed25519 identity keys, and
+share files, run the GG20 DKG and a 2-of-3 sign over authenticated TCP. An
+on-chain request triggers the run, and the wire signature ecrecovers to the group
+address.
+
+It is localhost today. No TLS, no PKI beyond a static pinned-key directory, and a
+fail-stop abort rather than GG20 identifiable abort, so it does not yet attribute
+and slash the specific operator who misbehaved. Shares live in local files, not
+an HSM. That hardening is the next milestone, and it is not done.
 
 ## Numbers
 
-Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
+Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6, deploy tx
+3LAt17P8Zmh2EYyphzVF4EHNY1uffkaJp7cp4V2yUpNh3MoV82iP5mEvdg18XMBUnKwANDGANCj43mEVRJUh6ZAQ.
 
-Destination VM families in one program (TargetVm): Svm via FROST Ed25519; Evm, Tron, Cosmos, and Bitcoin via GG20 secp256k1.
+Two schemes: FROST Ed25519 for the SVM family, GG20 secp256k1 for EVM, Bitcoin,
+Tron, and Cosmos. Five destination VM families in one program. Six PDA
+namespaces, so every signing round is a deterministically addressable state
+machine. Twenty-two error codes, each tied to one invariant: ThresholdNotMet is
+the finalization gate, RequestExpired releases liveness pressure past the
+deadline, OperatorJailed keeps a slashed operator out of later rounds,
+SchemeMismatch is a hard reject across curve families.
 
-PDA namespaces: protocol, bond_vault, slash_pool, operator, request, partial. Every signing round is a deterministically addressable on-chain state machine.
+## What is verified, and what is not
 
-Unbonding restriction: an operator cannot begin withdrawing collateral while a signing request they took part in has not finalized or expired. Checked at instruction level against the current slot.
+Verified, today, from a clean clone: the threshold signing on both curves,
+accepted by independent standard verifiers; the BTC and Tron envelopes; the
+on-chain coordination loop end to end on a local validator; the networked
+operators over TCP; and the reconciled program live on devnet.
 
-23 error codes, each tied to a specific invariant the program enforces. ThresholdNotMet is the finalization gate. RequestExpired removes liveness pressure once a slot deadline passes. OperatorJailed keeps a slashed operator out of later rounds. SchemeMismatch is a hard rejection with no fallback across curve families.
+Not verified, and not claimed: a security audit. `tss-lib` and `frost-ed25519`
+are audited; this integration and the on-chain program are not. Nothing here is
+audited for real value. The networked path is localhost. Mainnet is gated behind
+a verified devnet run.
 
-## Verify it yourself
+The honest cost stays stated: a threshold of colluding operators can still sign
+your asset away. Slashing makes that expensive, not impossible, and a single
+account that signs for every chain is also a single account whose compromise
+spends everything. We say it in the copy instead of hiding it.
 
-The program is at 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6 on devnet. Pull the Anchor IDL from the deployed account. Check the PDA seeds against the state.rs documentation. Read the threshold enforcement in the aggregate_and_emit handler. Confirm the unbonding restriction is enforced at the instruction level against the current slot.
-
-Source: github.com/distin-xyz/distin
-
-The part you cannot fully verify on-chain today is the share combination logic. That lives in the off-chain signing libraries, which are in the source repository and are the right starting point for anyone evaluating the cryptographic security of the construction. The on-chain program marks the integration boundaries explicitly.
-
-The control-plane logic, the part that governs economic security and stops operators from exiting during an active signing window, is fully on-chain. Read it.
-
-Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6. Source: github.com/distin-xyz/distin. Site: distin.xyz.
+Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6. Source:
+github.com/distin-xyz/distin. Site: distin.xyz. Pull the IDL, read the threshold
+handler, then run the two tests and watch the part that sounds impossible verify.

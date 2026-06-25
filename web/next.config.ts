@@ -6,8 +6,8 @@ const onVercel = !!process.env.VERCEL;
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
-  // 로컬: 템플릿 node_modules 정션이 root(concept-machine) 안에 들어오게 turbopack/tracing root를 고정.
-  // Vercel: node_modules를 새로 설치하므로 불필요 — 오히려 프로젝트 밖을 가리켜 빌드가 깨지니 생략.
+  // Local: pin the turbopack/tracing root so the template's node_modules junction resolves inside the repo root.
+  // Vercel: not needed (node_modules is installed fresh); pinning it would point outside the project and break the build, so omit it.
   ...(onVercel
     ? {}
     : {
