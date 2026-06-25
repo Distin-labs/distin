@@ -1,0 +1,33 @@
+[workspace]
+members = ["programs/distin"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["distin core"]
+license = "MIT"
+readme = "README.md"
+rust-version = "1.78"
+description = "One Solana account natively signs for every chain, no bridges: on-chain threshold-signature coordination."
+keywords = ["solana", "anchor", "defi", "web3"]
+categories = ["cryptography", "network-programming"]
+
+[workspace.dependencies]
+anchor-lang = "0.31.1"
+anchor-spl = "0.31.1"
+solana-program = "2"
+solana-sdk = "=1.18.26"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0"
+
+[profile.release]
+overflow-checks = true
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+
+[profile.release.build-override]
+opt-level = 3
+incremental = false
+codegen-units = 1
