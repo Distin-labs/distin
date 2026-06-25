@@ -1,0 +1,44 @@
+# Secrets — never commit
+.env
+.env.*
+*.pem
+*-keypair.json
+deploy.json
+*-deploy.json
+# MPC secret material (key shares, operator identity keys)
+*shares*.json
+*.share.json
+operators/
+
+# Rust / Anchor
+target/
+.anchor/
+test-ledger/
+**/*.rs.bk
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+*.log
+*.tsbuildinfo
+
+# Deploy tooling (links to an external project; not part of the repo)
+.vercel/
+
+# OS
+.DS_Store
+
+# Pipeline build markers and scratch artifacts (not repo deliverables)
+*.done
+.images_optimized
+weird_*.png
+
+# Pipeline-internal scratch (concept gen, prompts, verification marker)
+core.verified
+concept.json
+site_content.json
+logo_[0-9].png
+hero_prompt.txt
+logo_prompt.txt
