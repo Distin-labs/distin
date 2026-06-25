@@ -22,7 +22,7 @@ import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 
 const RPC = "http://127.0.0.1:8899";
-const PROGRAM_ID = new PublicKey("2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd");
+const PROGRAM_ID = new PublicKey("4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6");
 
 // Anchor instruction discriminators (first 8 bytes of sha256("global:<ix_name>")).
 const DISC = {

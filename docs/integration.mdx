@@ -1,6 +1,6 @@
 # Integration
 
-Distin's on-chain program (`2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd`) acts as a coordination control plane: it holds economic state, enforces liveness deadlines, and publishes aggregate signatures that an off-chain relayer carries to the destination chain. This page covers every integration touchpoint — PDA derivation, account schemas, instruction parameters, TypeScript examples, and failure modes — drawn directly from `programs/distin/src/lib.rs` and `state.rs`.
+Distin's on-chain program (`4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6`) acts as a coordination control plane: it holds economic state, enforces liveness deadlines, and publishes aggregate signatures that an off-chain relayer carries to the destination chain. This page covers every integration touchpoint — PDA derivation, account schemas, instruction parameters, TypeScript examples, and failure modes — drawn directly from `programs/distin/src/lib.rs` and `state.rs`.
 
 ---
 
@@ -24,7 +24,7 @@ The program uses Token-2022 (`anchor_spl::token_interface`) for all LST bond tra
 import { PublicKey } from "@solana/web3.js";
 
 const Distin_PROGRAM_ID = new PublicKey(
-  "2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd"
+  "4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6"
 );
 
 // Basis-point denominator for staked-weight threshold checks.
@@ -299,7 +299,7 @@ const provider = new AnchorProvider(connection, wallet, {
 const program = new Program(idl as any, provider);
 
 const Distin_PROGRAM_ID = new PublicKey(
-  "2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd"
+  "4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6"
 );
 const TOKEN_2022 = TOKEN_2022_PROGRAM_ID;
 ```

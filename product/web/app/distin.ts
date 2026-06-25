@@ -18,7 +18,7 @@ export const RPC_URL =
   process.env.NEXT_PUBLIC_RPC_URL ?? "http://127.0.0.1:8899";
 export const PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_PROGRAM_ID ??
-    "2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd"
+    "4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6"
 );
 export const CLUSTER_LABEL = process.env.NEXT_PUBLIC_CLUSTER ?? "localnet";
 

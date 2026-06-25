@@ -1,6 +1,6 @@
 # Distin: thread + media checklist
 
-Program (devnet): `2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd`
+Program (devnet): `4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6`
 Source: github.com/distin-xyz/distin · Site: distin.xyz
 
 This file holds the numbered X thread and the screenshot/video shotlist. The
@@ -24,7 +24,7 @@ instructions.
 
 S1: On-chain program confirmation
 - Tag: #ProgramVerification
-- Frame: Solana Explorer (devnet) search result for 2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd
+- Frame: Solana Explorer (devnet) search result for 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
 - Crop: browser URL bar (showing ?cluster=devnet) + Program ID + "Executable: Yes" + the BPF Upgradeable Loader line. Cut the rest of the page.
 - Caption: none. Let the program address and the "Executable" status speak for themselves.
 
@@ -112,7 +112,7 @@ V3: Slashing mechanism
 
 - S5 and S6 must be real on-chain transactions. No mock data, no test screenshots, no composites. The Solana Explorer URL must be visible in the address bar, with ?cluster=devnet.
 - The V1 demo must run end to end without edit cuts that skip a step. Cutting out a stage reads as hiding something.
-- The program address 2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd must appear in every screenshot and video. If it is not on screen, add it as a caption.
+- The program address 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6 must appear in every screenshot and video. If it is not on screen, add it as a caption.
 - Tone: dark backgrounds. No neon, no glow, no CRT. The default Solana Explorer UI colors are fine to keep.
 - Build V2 in Figma or Excalidraw and render it as an animation, not a screen recording.
 - Captions are English only.
@@ -126,7 +126,7 @@ Distin.
 
 One Solana account holds signing authority over native assets on every major chain. No bridge contract on any destination.
 
-Program (devnet): 2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd
+Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
 Source: github.com/distin-xyz/distin
 Site: distin.xyz
 
@@ -210,7 +210,7 @@ A signing intent is posted as a Solana instruction. Operators submit partials ac
 
 No wrapped token. No bridge UI. One Solana account.
 
-Program (devnet): 2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd
+Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
 
 [attach V1]
 
@@ -292,7 +292,7 @@ Native asset control across SVM, EVM, Bitcoin, Tron, and Cosmos. One Solana acco
 
 We have driven the core path on devnet: initialize the protocol, register a bonded operator, post a signing intent. create_signing_request confirms as an ordinary Solana transaction. Testing stage, not a mainnet launch.
 
-Program (devnet): 2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd
+Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
 Source: github.com/distin-xyz/distin
 Site: distin.xyz
 
@@ -335,7 +335,7 @@ The off-chain signing libraries are where the cryptographic share combination li
 
 ## Numbers
 
-Program (devnet): 2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd
+Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6
 
 Destination VM families in one program (TargetVm): Svm via FROST Ed25519; Evm, Tron, Cosmos, and Bitcoin via GG20 secp256k1.
 
@@ -347,7 +347,7 @@ Unbonding restriction: an operator cannot begin withdrawing collateral while a s
 
 ## Verify it yourself
 
-The program is at 2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd on devnet. Pull the Anchor IDL from the deployed account. Check the PDA seeds against the state.rs documentation. Read the threshold enforcement in the aggregate_and_emit handler. Confirm the unbonding restriction is enforced at the instruction level against the current slot.
+The program is at 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6 on devnet. Pull the Anchor IDL from the deployed account. Check the PDA seeds against the state.rs documentation. Read the threshold enforcement in the aggregate_and_emit handler. Confirm the unbonding restriction is enforced at the instruction level against the current slot.
 
 Source: github.com/distin-xyz/distin
 
@@ -355,4 +355,4 @@ The part you cannot fully verify on-chain today is the share combination logic. 
 
 The control-plane logic, the part that governs economic security and stops operators from exiting during an active signing window, is fully on-chain. Read it.
 
-Program (devnet): 2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd. Source: github.com/distin-xyz/distin. Site: distin.xyz.
+Program (devnet): 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6. Source: github.com/distin-xyz/distin. Site: distin.xyz.

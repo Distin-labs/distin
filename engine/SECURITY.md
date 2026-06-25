@@ -6,7 +6,7 @@ economic security, threshold rules, liveness deadlines, and slashing that make
 the off-chain signing libraries safe to trust. This document states what the
 program defends, what it assumes, and where the trust boundary sits.
 
-Program id: `2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd` (devnet).
+Program id: `4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6` (devnet).
 
 ## Trust model
 

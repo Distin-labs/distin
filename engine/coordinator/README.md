@@ -30,7 +30,7 @@ export COPYFILE_DISABLE=1                       # macOS genesis-tar workaround
 
 # 1. validator with the rebuilt program
 solana-test-validator --reset --ledger /tmp/distin-ledger \
-  --bpf-program 2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd \
+  --bpf-program 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6 \
   ../target/deploy/distin.so &
 
 # 2. the loop

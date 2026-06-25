@@ -88,11 +88,9 @@ Honesty is the point. Here is the exact line between what is built and verified 
 - **Bitcoin + Tron (M5/M6).** Real BIP-143 sighash signing, DER/bech32/base58check envelopes, verified against independent libraries and spec vectors.
 - **On-chain coordination loop (M3/M4).** An on-chain `SigningRequest` drives the off-chain MPC; the real aggregate is recorded back on-chain and independently verified, end-to-end on a local validator. (`engine/coordinator`)
 - **Networked operators (M7).** Three separate OS processes (distinct PIDs, ports, Ed25519 identity keys, share files) run the GG20 DKG and a 2-of-3 sign over authenticated TCP; an on-chain request triggers it; the wire signature ecrecover-verifies to the group address. (`engine/kobe-ecdsa/net`, `engine/coordinator` `net-demo`)
-- **On-chain program, reconciled.** The fake byte-fold "signature" was removed; `aggregate_and_emit` now takes the *real* off-chain aggregate as input and enforces threshold + slot deadline. Operator lifecycle, bonding, and slashing are implemented in full. (`engine/programs/distin`)
+- **On-chain program, reconciled — and live on devnet.** The fake byte-fold "signature" was removed; `aggregate_and_emit` now takes the *real* off-chain aggregate as input and enforces threshold + slot deadline. Operator lifecycle, bonding, and slashing are implemented in full. The reconciled bytecode is deployed and live on Solana **devnet** at `4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6` (deploy tx `3LAt17P8Zmh2EYyphzVF4EHNY1uffkaJp7cp4V2yUpNh3MoV82iP5mEvdg18XMBUnKwANDGANCj43mEVRJUh6ZAQ`). (`engine/programs/distin`)
 
 **Next — not done, and not claimed to be:**
-
-- **Devnet redeploy of the reconciled program.** An earlier build of the program is on devnet at the ID below, but the *reconciled* bytecode (real-aggregate input, `cancel_request` authority fix) has **not** been redeployed yet — that needs operator SOL. Treat the current devnet account as stale until redeployed.
 - **Networked-operator hardening.** Today's network proof is localhost: no TLS, no PKI/CA (a static pinned-key directory), and a fail-stop abort rather than GG20 *identifiable* abort (it does not yet attribute and slash the misbehaving operator). Shares live in local files, not an HSM.
 - **Security audit.** `tss-lib` and `frost-ed25519` are audited; *this integration and the on-chain program are not*. Nothing here is audited for real value.
 - **FROST networked path.** Only the GG20/ETH path is proven networked end-to-end; the FROST signer follows the identical wiring but its `net/` operator isn't built yet.
@@ -207,9 +205,9 @@ bash deploy.sh devnet
 ```
 
 Program ID (declared for every cluster in `engine/Anchor.toml`):
-`2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd`
+`4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6`
 
-An earlier build is on devnet at that ID. The reconciled bytecode has not been redeployed yet (see *What's next*).
+The reconciled bytecode is deployed and live on devnet at that ID (deploy tx `3LAt17P8Zmh2EYyphzVF4EHNY1uffkaJp7cp4V2yUpNh3MoV82iP5mEvdg18XMBUnKwANDGANCj43mEVRJUh6ZAQ`). Verify: `solana program show 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6 --url devnet`.
 
 ### Site
 

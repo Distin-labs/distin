@@ -17,7 +17,7 @@ cd "$(dirname "$0")"
 export PATH="$HOME/.cargo/bin:$HOME/.local/share/solana/install/active_release/bin:/opt/homebrew/bin:$PATH"
 export COPYFILE_DISABLE=1   # macOS genesis-tar AppleDouble workaround (SHARED_NOTES)
 
-PROGRAM_ID="2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd"
+PROGRAM_ID="4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6"
 SO="../target/deploy/distin.so"
 LEDGER="$(mktemp -d /tmp/distin-m7-ledger.XXXXXX)"
 # NOTE: BSD/macOS mktemp does NOT expand X's when a suffix follows them, so the

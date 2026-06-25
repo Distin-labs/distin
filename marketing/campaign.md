@@ -1,6 +1,6 @@
 # Distin: marketing campaign
 
-Program: `2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd`
+Program: `4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6`
 Source: github.com/distin-xyz/distin · Site: distin.xyz
 
 This file is the campaign: one story spine, then 15 pieces in distinct formats.
@@ -189,7 +189,7 @@ way out. The operators are that signature at the door. Your coat stays on you.
 ## Piece 9: The receipt
 
 Everything below is on-chain and readable today on devnet at
-`2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd`.
+`4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6`.
 
 - 6 PDA namespaces: protocol, bond_vault, slash_pool, operator, request, partial.
   Every signing round is a deterministically addressable state machine.
@@ -304,7 +304,7 @@ bonded operator, post a signing intent, finalize. `create_signing_request`
 confirms as an ordinary Solana transaction. This is the testing stage, not a
 mainnet launch, and we are not going to pretend otherwise.
 
-Program (devnet): `2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd`
+Program (devnet): `4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6`
 Source: github.com/distin-xyz/distin
 Site: distin.xyz
 

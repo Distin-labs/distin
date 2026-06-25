@@ -1,6 +1,6 @@
 # How It Works
 
-Distin turns Solana into a **threshold-signature control plane**. Every cross-chain signing action moves through four phases: operator bonding, intent posting, partial-signature aggregation, and off-chain relay. Each phase is enforced on-chain by the program deployed at `2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd`. This page traces those phases end-to-end with the exact account layouts, instruction signatures, invariants, and failure modes that govern each step.
+Distin turns Solana into a **threshold-signature control plane**. Every cross-chain signing action moves through four phases: operator bonding, intent posting, partial-signature aggregation, and off-chain relay. Each phase is enforced on-chain by the program deployed at `4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6`. This page traces those phases end-to-end with the exact account layouts, instruction signatures, invariants, and failure modes that govern each step.
 
 ---
 
@@ -668,4 +668,4 @@ await program.methods
 | `OPERATOR_SEED` | `b"operator"` | Per-operator PDA seed |
 | `REQUEST_SEED` | `b"request"` | Per-signing-request PDA seed |
 | `PARTIAL_SEED` | `b"partial"` | Per-(request, operator) partial PDA seed |
-| Program ID | `2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd` | Deployed program address |
+| Program ID | `4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6` | Deployed program address |

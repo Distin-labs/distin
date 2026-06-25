@@ -57,7 +57,7 @@ distin/
 The program is declared at:
 
 ```
-declare_id!("2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd");
+declare_id!("4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6");
 ```
 
 This is the canonical program ID. Every PDA derivation must use this pubkey as the program ID.
@@ -89,7 +89,7 @@ solana airdrop 4
 anchor deploy --provider.cluster devnet
 ```
 
-This sets the program at `2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd`. If you are deploying a fork under a different ID, update `declare_id!` and rebuild.
+This sets the program at `4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6`. If you are deploying a fork under a different ID, update `declare_id!` and rebuild.
 
 ## PDA Reference
 
@@ -108,7 +108,7 @@ Every on-chain account is a PDA. The seeds are defined in `state.rs` and must be
 import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 
-const PROGRAM_ID = new PublicKey("2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd");
+const PROGRAM_ID = new PublicKey("4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6");
 
 // Protocol PDA
 const [protocolPda] = PublicKey.findProgramAddressSync(

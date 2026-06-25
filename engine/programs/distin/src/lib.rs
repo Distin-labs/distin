@@ -37,7 +37,7 @@ pub mod state;
 use errors::DistinError;
 use state::*;
 
-declare_id!("2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd");
+declare_id!("4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6");
 
 /// Basis-point denominator for the staked-weight threshold.
 pub const BPS_DENOMINATOR: u64 = 10_000;

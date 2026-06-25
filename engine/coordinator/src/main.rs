@@ -51,7 +51,7 @@ use solana_sdk::{
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 
 const RPC_URL: &str = "http://127.0.0.1:8899";
-const PROGRAM_ID: &str = "2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd";
+const PROGRAM_ID: &str = "4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6";
 
 // Anchor instruction discriminators (first 8 bytes of sha256("global:<name>")).
 const DISC_INITIALIZE: [u8; 8] = [175, 175, 109, 31, 13, 152, 155, 237];
