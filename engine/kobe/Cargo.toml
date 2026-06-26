@@ -24,10 +24,22 @@ license = "MIT"
 description = "Distin off-chain MPC threshold signer (FROST Ed25519 for SVM/Cosmos)."
 publish = false
 
+[lib]
+# rlib for the Rust tests/examples; cdylib so the hardened Go operator transport
+# (engine/kobe-ecdsa/net) can drive the AUDITED frost-ed25519 crypto over a thin
+# C ABI (the M11-Part-2 / F1 networked FROST path). The Go side owns the
+# mTLS/PKI/encrypted-share transport; every FROST round is computed here, in the
+# audited crate, never reimplemented in Go.
+crate-type = ["rlib", "cdylib"]
+
 [dependencies]
 # ZF (Zcash Foundation) frost-ed25519 — audited reference FROST implementation.
 frost-ed25519 = "3.0"
 rand = "0.8"
+# Standard Ed25519 verifier, used INSIDE the FFI signing path to assert (defence
+# in depth) that the aggregate kobe hands back to Go is a real RFC 8032 signature
+# under the group key before it ever leaves the process. Same primitive Solana runs.
+ed25519-dalek = "2.1"
 
 [dev-dependencies]
 # Independent, standard Ed25519 verifier used to double-check the aggregate is a

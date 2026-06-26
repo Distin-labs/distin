@@ -25,6 +25,11 @@
 
 use std::collections::BTreeMap;
 
+/// C ABI over the audited FROST crate for the networked operator path
+/// (M11-Part-2 / F1). The hardened Go transport (mTLS/PKI/encrypted shares,
+/// `engine/kobe-ecdsa/net`) drives these from separate operator processes.
+pub mod ffi;
+
 use frost_ed25519 as frost;
 use frost::{
     keys::{KeyPackage, PublicKeyPackage},
@@ -67,7 +72,7 @@ impl KeySet {
             max_signers,
             min_signers,
             frost::keys::IdentifierList::Default,
-            &mut rng,
+            rng,
         )?;
         let mut key_packages = BTreeMap::new();
         for (id, secret_share) in secret_shares {
@@ -190,7 +195,7 @@ pub fn frost_threshold_sign(
         max_signers,
         min_signers,
         frost::keys::IdentifierList::Default,
-        &mut rng,
+        rng,
     )?;
 
     // Each participant validates its dealt share into a long-term KeyPackage.
