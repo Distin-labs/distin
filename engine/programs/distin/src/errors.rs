@@ -69,4 +69,10 @@ pub enum DistinError {
 
     #[msg("Arithmetic overflow")]
     MathOverflow,
+
+    #[msg("No Ed25519 attestation signatures found in the transaction")]
+    MissingAttestationSignatures,
+
+    #[msg("Ed25519 attestation instruction is malformed")]
+    MalformedAttestation,
 }

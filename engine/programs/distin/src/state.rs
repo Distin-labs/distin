@@ -95,8 +95,9 @@ pub struct Protocol {
 ///
 /// Seeds: `[OPERATOR_SEED, protocol, authority]`.
 /// Space (INIT_SPACE): protocol 32 + authority 32 + group_pubkey 33
-/// + bonded_amount 8 + stake_weight 8 + partials_submitted 8 + slash_count 4
-/// + jailed 1 + unbonding_at 8 + joined_slot 8 + bump 1 = 143 bytes (+8 disc).
+/// + attestation_pubkey 32 + bonded_amount 8 + stake_weight 8
+/// + partials_submitted 8 + slash_count 4 + jailed 1 + unbonding_at 8
+/// + joined_slot 8 + bump 1 = 175 bytes (+8 disc).
 #[account]
 #[derive(InitSpace)]
 pub struct Operator {
@@ -106,6 +107,11 @@ pub struct Operator {
     pub authority: Pubkey,
     /// Compressed group public key / FROST public-share identifier.
     pub group_pubkey: [u8; 33],
+    /// The operator's off-chain Ed25519 identity / attestation key — the same key
+    /// it signs M9 fault reports with (`engine/kobe-ecdsa/net`). Pinned here so
+    /// the program can verify an operator's signed attestation against its
+    /// registered identity in `slash_operator_attested`.
+    pub attestation_pubkey: [u8; 32],
     /// Raw bonded LST amount held in the vault.
     pub bonded_amount: u64,
     /// SOL-denominated economic weight derived from the bond via the oracle.
