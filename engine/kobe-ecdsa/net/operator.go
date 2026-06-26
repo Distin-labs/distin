@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"path/filepath"
 
 	"github.com/bnb-chain/tss-lib/v2/tss"
 )
@@ -26,6 +27,15 @@ type OperatorConfig struct {
 	IdentityHex string `json:"identity_key"` // hex ed25519 private key (64 bytes)
 	SharePath   string `json:"share_path"`   // path to THIS operator's single key share
 	Peers       []Peer `json:"peers"`        // every operator incl. self (pubkeys only)
+	// M8 mutual-TLS material. When all three are set the operator runs the
+	// hardened mTLS transport; when absent it falls back to the legacy
+	// Ed25519-handshake raw-socket path. CAPath is the operator-set CA cert
+	// (shared); LeafPath is THIS operator's leaf cert; the peer directory's
+	// per-operator cert files are named <dir>/op<i>.cert.pem alongside the CA.
+	CAPath    string `json:"ca_cert,omitempty"`
+	LeafPath  string `json:"leaf_cert,omitempty"`
+	CertDir   string `json:"cert_dir,omitempty"` // dir holding op<i>.cert.pem for every peer
+	TLSEnable bool   `json:"tls,omitempty"`
 }
 
 // LoadOperatorConfig reads and validates an operator config, decoding the
@@ -53,7 +63,45 @@ func LoadOperatorConfig(path string) (*OperatorConfig, ed25519.PrivateKey, []Pee
 		p.PubKey = ed25519.PublicKey(pub)
 		peers[i] = p
 	}
+	// When mutual TLS is enabled, attach each peer's pinned leaf cert (DER) now,
+	// keyed by index, so it travels with the peer through any later quorum
+	// re-indexing.
+	if c.TLSEnable {
+		for i := range peers {
+			path := filepath.Join(c.CertDir, fmt.Sprintf("op%d.cert.pem", peers[i].Index))
+			pemBz, rerr := os.ReadFile(path)
+			if rerr != nil {
+				return nil, nil, nil, fmt.Errorf("peer %d: read leaf cert %s: %w", peers[i].Index, path, rerr)
+			}
+			der, derr := DecodeCertPEM(pemBz)
+			if derr != nil {
+				return nil, nil, nil, fmt.Errorf("peer %d: decode leaf cert: %w", peers[i].Index, derr)
+			}
+			peers[i].CertDER = der
+		}
+	}
 	return &c, priv, peers, nil
+}
+
+// LoadCertPair reads the operator-set CA cert and this operator's own leaf cert
+// (both PEM on disk) as DER, for building mutual-TLS material. Peer leaf certs
+// are loaded separately and attached to the peer directory in LoadOperatorConfig.
+func LoadCertPair(caPath, leafPath string) (caDER, ownLeafDER []byte, err error) {
+	caPEM, err := os.ReadFile(caPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read CA cert: %w", err)
+	}
+	if caDER, err = DecodeCertPEM(caPEM); err != nil {
+		return nil, nil, fmt.Errorf("decode CA cert: %w", err)
+	}
+	leafPEM, err := os.ReadFile(leafPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read own leaf cert: %w", err)
+	}
+	if ownLeafDER, err = DecodeCertPEM(leafPEM); err != nil {
+		return nil, nil, fmt.Errorf("decode own leaf cert: %w", err)
+	}
+	return caDER, ownLeafDER, nil
 }
 
 // PartyIDFor builds the tss.PartyID for a peer index using a deterministic share

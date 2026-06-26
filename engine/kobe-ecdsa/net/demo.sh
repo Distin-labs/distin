@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Milestone 6 end-to-end demo: 3 SEPARATE operator processes run a GG20 DKG and a
-# 2-of-3 threshold sign over real TCP sockets, with Ed25519 wire authentication,
-# and the resulting signature is INDEPENDENTLY verified (go-ethereum ecrecover,
-# in a process that shares nothing with the operators). Plus two negative cases:
-# a peer killed mid-protocol (clean abort) and a spoofed operator (handshake
-# rejection). Localhost only; touches no devnet, no on-chain program.
+# Milestone 6+8 end-to-end demo: 3 SEPARATE operator processes run a GG20 DKG and
+# a 2-of-3 threshold sign over MUTUAL TLS (M8: every connection is
+# RequireAndVerifyClientCert against an operator-set CA + per-operator pin), and
+# the resulting signature is INDEPENDENTLY verified (go-ethereum ecrecover, in a
+# process that shares nothing with the operators). Plus negative cases: a peer
+# killed mid-protocol (clean abort), a spoofed identity key (handshake
+# rejection), and an operator presenting a cert from an UNTRUSTED CA (TLS
+# handshake rejection). Localhost only; touches no devnet, no on-chain program.
 #
 #   cd engine/kobe-ecdsa && ./net/demo.sh
 #
@@ -24,8 +26,9 @@ go build -o "$BIN/operator" ./cmd/operator
 go build -o "$BIN/gen-operators" ./cmd/gen-operators
 go build -o "$BIN/verify-sig" ./cmd/verify-sig
 
-echo; echo "### minting 3 distinct operator identities (own key + port each)"
-"$BIN/gen-operators" -n 3 -base-port 9100 -dir "$OPS"
+echo; echo "### minting 3 distinct operator identities + an operator-set CA (mutual TLS)"
+"$BIN/gen-operators" -n 3 -base-port 9100 -dir "$OPS" -tls
+echo "operator-set PKI written:"; ls -1 "$OPS"/ca.cert.pem "$OPS"/op*.cert.pem
 
 echo; echo "### PHASE 1: distributed key generation — 3 separate processes over TCP"
 "$BIN/operator" -config "$OPS/op2.json" -phase keygen -threshold 1 -timeout 300s >"$OUT/kg2.json" 2>"$LOG/kg2.log" &
@@ -77,7 +80,47 @@ set +e
 "$BIN/operator" -config "$OPS/op0.json" -phase keygen -threshold 1 -timeout 20s >/dev/null 2>"$LOG/spoof0.log" &
 wait
 set -e
-echo "honest peers reject the impostor at the handshake:"
-grep -h "impersonation rejected" "$LOG/spoof0.log" "$LOG/spoof2.log"
+echo "honest peers reject the impostor at the mutual-TLS handshake:"
+# Under M8 the forged identity key cannot produce a valid TLS client-certificate
+# signature for op1's pinned leaf, so the impostor is rejected at the TLS layer
+# (a strictly stronger rejection than the old application-handshake one).
+grep -h -i "invalid signature by the client certificate\|impersonation rejected\|verification failure" \
+  "$LOG/spoof0.log" "$LOG/spoof2.log" | head -1
+
+echo; echo "### NEGATIVE C: untrusted CA — op1 presents a leaf signed by a ROGUE CA"
+# Mint a rogue operator-set CA and have IT issue a leaf for op1's REAL identity
+# key. op1 keeps the real peer directory + real CA pin (so it can pin its peers),
+# but presents the rogue-CA leaf as its OWN certificate. The honest peers chain
+# every peer cert to the real operator-set CA, so op1's rogue leaf fails chain
+# validation at the mutual-TLS handshake — before any protocol byte flows.
+ROGUE="$WORK/rogue"; mkdir -p "$ROGUE"
+OP1KEY=$(grep -o '"identity_key": "[0-9a-f]*"' "$OPS/op1.json" | cut -d'"' -f4)
+cat >"$WORK/rogueleaf.go" <<'GO'
+package main
+import("crypto/ed25519";"encoding/hex";"os";"time";kobenet "github.com/distin/kobe-ecdsa/net")
+func main(){
+ seed,_:=hex.DecodeString(os.Args[1]); priv:=ed25519.PrivateKey(seed)
+ ca,_:=kobenet.NewCA(time.Hour)
+ leaf,_:=ca.IssueLeaf(priv.Public().(ed25519.PublicKey),"op1",time.Hour)
+ os.WriteFile(os.Args[2],kobenet.EncodeCertPEM(leaf),0o644)
+}
+GO
+go run "$WORK/rogueleaf.go" "$OP1KEY" "$ROGUE/op1.rogue.cert.pem"
+cat >"$WORK/swapleaf.go" <<'GO'
+package main
+import("encoding/json";"os")
+func main(){bz,_:=os.ReadFile(os.Args[1]);var m map[string]any;json.Unmarshal(bz,&m)
+m["leaf_cert"]=os.Args[2]
+o,_:=json.MarshalIndent(m,"","  ");os.WriteFile(os.Args[3],o,0o600)}
+GO
+go run "$WORK/swapleaf.go" "$OPS/op1.json" "$ROGUE/op1.rogue.cert.pem" "$OPS/op1.untrusted.json"
+set +e
+"$BIN/operator" -config "$OPS/op2.json" -phase keygen -threshold 1 -timeout 20s >/dev/null 2>"$LOG/utls2.log" &
+"$BIN/operator" -config "$OPS/op1.untrusted.json" -phase keygen -threshold 1 -timeout 20s >/dev/null 2>"$LOG/utls1.log" &
+"$BIN/operator" -config "$OPS/op0.json" -phase keygen -threshold 1 -timeout 20s >/dev/null 2>"$LOG/utls0.log" &
+wait
+set -e
+echo "honest peer rejects the untrusted cert at the mutual-TLS handshake:"
+grep -h -i "unknown authority\|tls server handshake\|tls client handshake" "$LOG/utls0.log" "$LOG/utls1.log" "$LOG/utls2.log" | head -2
 
 echo; echo "### DONE — work dir: $WORK"

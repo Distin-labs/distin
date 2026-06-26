@@ -45,6 +45,10 @@ type Peer struct {
 	PubKey  ed25519.PublicKey `json:"-"`
 	PubHex  string            `json:"pubkey"` // hex of PubKey, for the JSON config
 	Moniker string            `json:"moniker"`
+	// CertDER is the operator's M8 leaf certificate (DER), pinned for mutual
+	// TLS. Populated from the peer's PEM cert file; empty in the legacy
+	// pre-TLS path (the in-process tests still use raw sockets).
+	CertDER []byte `json:"-"`
 }
 
 // Envelope is one authenticated wire message. Payload is a tss-lib WireBytes()

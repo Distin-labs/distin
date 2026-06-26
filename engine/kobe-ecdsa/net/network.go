@@ -2,6 +2,7 @@ package kobenet
 
 import (
 	"crypto/ed25519"
+	"crypto/tls"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -37,6 +38,12 @@ type Network struct {
 
 	finished atomicBool // set once this operator's own party has produced its result
 	finCh    chan int   // peer indices that have sent their FIN control frame
+
+	// tlsm is the M8 mutual-TLS material. When non-nil, every peer connection is
+	// wrapped in mutual TLS (RequireAndVerifyClientCert + per-operator pin)
+	// before the application handshake runs. When nil, the legacy raw-socket +
+	// Ed25519-handshake path is used (kept for the in-process unit tests).
+	tlsm *tlsMaterial
 
 	logf func(string, ...any)
 }
@@ -77,6 +84,29 @@ func NewNetwork(self int, moniker string, priv ed25519.PrivateKey, peers []Peer,
 		finCh:   make(chan int, len(pm)+1),
 		logf:    logf,
 	}
+}
+
+// NewNetworkTLS builds an operator network that wraps every peer connection in
+// mutual TLS (Milestone 8). identity is this operator's Ed25519 key (also the
+// TLS leaf key); ownLeafDER / caDER are this operator's leaf cert and the
+// operator-set CA cert; each peer in `peers` must carry its pinned CertDER.
+func NewNetworkTLS(self int, moniker string, identity ed25519.PrivateKey, peers []Peer, session string, ownLeafDER, caDER []byte, logf func(string, ...any)) (*Network, error) {
+	n := NewNetwork(self, moniker, identity, peers, session, logf)
+	tlsm, err := buildTLSMaterial(self, identity, ownLeafDER, caDER, n.peerSlice())
+	if err != nil {
+		return nil, err
+	}
+	n.tlsm = tlsm
+	return n, nil
+}
+
+// peerSlice returns the peer directory (excluding self) as a slice.
+func (n *Network) peerSlice() []Peer {
+	out := make([]Peer, 0, len(n.peers))
+	for _, p := range n.peers {
+		out = append(out, p)
+	}
+	return out
 }
 
 // Inbox is the stream of authenticated inbound messages for the protocol driver.
@@ -132,6 +162,14 @@ func (n *Network) Start(listenAddr string, timeout time.Duration) error {
 				emu.Unlock()
 				return
 			}
+			nc, err = n.wrapServerTLS(nc)
+			if err != nil {
+				emu.Lock()
+				acceptErr = err
+				emu.Unlock()
+				_ = nc.Close()
+				return
+			}
 			peerIdx, err := n.handshake(nc, false)
 			if err != nil {
 				emu.Lock()
@@ -168,6 +206,14 @@ func (n *Network) Start(listenAddr string, timeout time.Duration) error {
 				}
 				time.Sleep(100 * time.Millisecond)
 			}
+			nc, err := n.wrapClientTLS(nc)
+			if err != nil {
+				emu.Lock()
+				dialErr = fmt.Errorf("dial peer %d at %s: %w", peerIdx, addr, err)
+				emu.Unlock()
+				_ = nc.Close()
+				return
+			}
 			got, err := n.handshake(nc, true)
 			if err != nil {
 				emu.Lock()
@@ -198,6 +244,56 @@ func (n *Network) Start(listenAddr string, timeout time.Duration) error {
 		return acceptErr
 	}
 	return nil
+}
+
+// wrapServerTLS completes the TLS server handshake on an accepted connection
+// when mutual TLS is configured; otherwise it returns the raw connection. The
+// TLS handshake here is what verifies the dialer's client certificate against
+// the operator-set CA and the per-operator pin (verifyPinned) BEFORE any
+// application bytes flow.
+func (n *Network) wrapServerTLS(nc net.Conn) (net.Conn, error) {
+	if n.tlsm == nil {
+		return nc, nil
+	}
+	tc := tls.Server(nc, n.tlsm.serverConfig())
+	_ = tc.SetDeadline(time.Now().Add(10 * time.Second))
+	if err := tc.Handshake(); err != nil {
+		return nc, fmt.Errorf("tls server handshake: %w", err)
+	}
+	_ = tc.SetDeadline(time.Time{})
+	return tc, nil
+}
+
+// wrapClientTLS completes the TLS client handshake on a dialed connection when
+// mutual TLS is configured; otherwise it returns the raw connection.
+func (n *Network) wrapClientTLS(nc net.Conn) (net.Conn, error) {
+	if n.tlsm == nil {
+		return nc, nil
+	}
+	tc := tls.Client(nc, n.tlsm.clientConfig())
+	_ = tc.SetDeadline(time.Now().Add(10 * time.Second))
+	if err := tc.Handshake(); err != nil {
+		return nc, fmt.Errorf("tls client handshake: %w", err)
+	}
+	_ = tc.SetDeadline(time.Time{})
+	return tc, nil
+}
+
+// tlsPeerIndex, for a TLS connection, returns the operator index the peer's
+// (already TLS-verified, CA-chained, set-pinned) leaf certificate belongs to.
+// This is the authenticated identity the application handshake binds the
+// claimed index against. Returns -1 if the connection is not TLS or the leaf is
+// somehow unpinned (which verifyPinned should already have rejected).
+func (n *Network) tlsPeerIndex(nc net.Conn) int {
+	tc, ok := nc.(*tls.Conn)
+	if !ok || n.tlsm == nil {
+		return -1
+	}
+	certs := tc.ConnectionState().PeerCertificates
+	if len(certs) == 0 {
+		return -1
+	}
+	return n.tlsm.peerIndexForSPKI(certs[0].RawSubjectPublicKeyInfo)
 }
 
 // handshake proves identity-key ownership on a fresh connection and returns the
@@ -239,6 +335,17 @@ func (n *Network) handshake(nc net.Conn, _ bool) (int, error) {
 	if !pubEqual(want.PubKey, peerPub) {
 		return -1, fmt.Errorf("handshake: peer %d presented key %s, pinned %s (impersonation rejected)",
 			peerIdx, hex.EncodeToString(peerPub)[:16], hex.EncodeToString(want.PubKey)[:16])
+	}
+	// Under mutual TLS, the peer already proved possession of a CA-issued,
+	// set-pinned leaf certificate during the TLS handshake. Bind the index the
+	// peer CLAIMS in-band to the index its TLS CERTIFICATE actually belongs to,
+	// so a member operator cannot present a valid cert for index A while
+	// claiming to be index B.
+	if n.tlsm != nil {
+		certIdx := n.tlsPeerIndex(nc)
+		if certIdx != peerIdx {
+			return -1, fmt.Errorf("handshake: peer claims index %d but its TLS certificate belongs to operator %d (cert/identity mismatch rejected)", peerIdx, certIdx)
+		}
 	}
 	// Prove ownership: sign the peer's nonce, verify the peer's signature of ours.
 	mySig := ed25519.Sign(n.priv, peerNonce)
