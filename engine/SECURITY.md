@@ -165,10 +165,83 @@ the source with `=== ... point ===` banners.
    the integration point. **Wiring a real, possibly <1.0 LST/SOL price changes
    weight accounting and is a deploy-affecting change.**
 
-4. **Slashing authority.** `slash_operator` is admin-gated. In production this
-   entry point should be fronted by an on-chain fraud-proof verifier so slashing
-   is permissionless-but-provable rather than admin-discretionary. The on-chain
-   *effect* (move collateral, jail, rebalance weight) is what is enforced here.
+4. **Slashing authority.** Two paths exist.
+   - `slash_operator` is admin-gated (discretionary; for off-chain-adjudicated
+     or governance slashes).
+   - `slash_operator_attested` (**M9, identifiable abort**) is *permissionless*
+     and gated by a cryptographic quorum, not the admin: it slashes the operator
+     that GG20 itself identified as the signing-round culprit, when a threshold of
+     honest operators have each signed the identical fault report. See the M9
+     threat model below. The on-chain *effect* (move collateral, jail, rebalance
+     weight) is identical between the two paths; only the authorization differs.
+
+## M9 identifiable-abort — threat model (precise)
+
+`slash_operator_attested` carries GG20's own culprit attribution on-chain. When a
+signing round fails because a specific operator submitted an invalid MtA/ZK proof,
+tss-lib blames that exact `*tss.PartyID` (`ecdsa/signing/round_3.go`,
+`Culprits()`), and **every honest party independently reaches the same
+attribution** — it is a verification result, not an opinion or a vote on conduct.
+Each honest operator signs an identical canonical `FaultReport`
+(`{session, message_hash, round, culprit_global, culprit_pubkey}`) with its
+registered Ed25519 attestation key.
+
+On-chain, the program (a) reconstructs the byte-identical report digest, (b) reads
+the sibling **Ed25519 native-program** instruction through the instructions sysvar
+and trusts only the runtime's signature verification (never a passed-in bool),
+(c) requires each verified signer to be the `attestation_pubkey` of a *distinct
+registered operator*, none of them the culprit, meeting
+`required_attesters = ceil(operator_count · threshold_bps / 10_000)`, and (d) binds
+the report's culprit key to the slashed operator account before applying the slash.
+
+- **A minority cannot slash.** Below `required_attesters` the instruction reverts
+  with `ThresholdNotMet`, so an honest operator is **not** slashable by a minority
+  — proven in `net/fault_test.go` (single attester rejected) and the program's
+  Rust tests (`required_attesters_is_ceiling_min_one`).
+- **The residual framing risk requires a colluding MAJORITY** of the signing
+  operators to sign a false report against an honest operator. That is exactly the
+  honest-majority trust boundary the threshold-signature scheme **already**
+  assumes: a dishonest majority can already produce group signatures and move
+  funds. **Option A therefore introduces no new trust assumption** — it inherits
+  the same boundary, and the same bonded stake secures both.
+- **What this is NOT.** It is an attestation of a cryptographic fact, not an
+  on-chain re-verification of the GG20 proof. The fully trustless upgrade — a
+  RISC Zero **SNARK fault-proof** of the GG20 fault, verified on Solana, letting a
+  single honest party slash a real cheater with no quorum — is documented as the
+  next milestone in `HARDENING.md` and is deliberately not built here (pure
+  on-chain Paillier/range-proof re-verification does not fit Solana's compute
+  budget; a SNARK collapses it to one small proof + a cheap verifier).
+- **Test-depth gap — CLOSED (M12).** The attested slash is now executed inside a
+  real SVM transaction by the litesvm integration suite (`engine/tests-litesvm`):
+  three operators register WITH bonded Token-2022 collateral, a real m-of-n
+  Ed25519 native-program instruction is built (over the byte-identical fault
+  digest the Go operators sign) and submitted in the same tx as
+  `slash_operator_attested`, and the test asserts the culprit's bond **actually
+  moves** from the vault into the slash pool and the operator is jailed below
+  `min_bond`. The negatives are also proven on-chain: a single (minority)
+  attestation reverts with `ThresholdNotMet` (6010); a full quorum signing the
+  WRONG digest reverts with `MissingAttestationSignatures` (6022); and a single
+  signature under a duplicated attestation key counts once (6010) — see the
+  finding below. The test crate is a separate workspace with its own lock, so it
+  cannot perturb the program's `cargo-build-sbf` lock.
+
+### Finding fixed this pass — duplicate-attestation-key double-count (was: quorum-integrity)
+
+`register_operator` does not force `attestation_pubkey` to be unique, so a party
+willing to bond two operator accounts (real `min_bond` collateral each) could
+register **both with the same attestation key**. The attester loop previously
+deduped by the operator PDA (`op.key()`), so one Ed25519 signature under that
+shared key was counted **once per duplicate account** — letting an attacker reach
+`required_attesters` with fewer distinct witnesses than intended, undercutting
+the "distinct honest attesters" guarantee. The integration test
+`duplicate_attestation_key_cannot_double_count` reproduced it (the slash wrongly
+succeeded). **Fix:** the loop now dedups on the **attestation key actually
+signed** (`seen_keys: Vec<[u8;32]>`), so one signature counts exactly once
+regardless of how many operator accounts claim that key; the test now sees the
+bundle rejected with `ThresholdNotMet` and the bond untouched. (Defense in depth:
+enforcing key-uniqueness at registration would also close it, but that needs an
+index account or an O(n) scan; deduping at slash time is the minimal, complete
+on-chain fix and is correct independent of registration.)
 
 ## Build / lint / audit status
 
@@ -177,10 +250,16 @@ the source with `=== ... point ===` banners.
   anchor-lang 0.31 `#[program]` / `#[derive(Accounts)]` macros on the host
   toolchain (the `cfg(target_os = "solana")` family and an internal deprecated
   `realloc` call) — no project code relies on either.
-- `cargo test`: **12 passing** unit tests over the security-critical pure logic
-  (per-scheme share validation, every rejection path, threshold/overflow edges).
-  Anchor account-constraint enforcement is verified at the integration tier
-  against the deployed program (see `product/`).
+- `cargo test`: **16 passing** unit tests over the security-critical pure logic
+  (per-scheme share validation, every rejection path, threshold/overflow edges,
+  and M9: the cross-language fault-report digest vector, the Ed25519
+  introspection parser, and the attester-threshold math).
+- **litesvm integration suite (`engine/tests-litesvm`): 2 passing** — the M9
+  attested slash run in real SVM transactions: a quorum slash moving a real bond
+  vault→slash-pool + jail, and the three on-chain negatives (minority,
+  wrong-digest, duplicate-key). Run with
+  `cd tests-litesvm && cargo test -- --nocapture`. Requires `target/deploy/distin.so`
+  (built by `cargo-build-sbf`).
 - `cargo audit`: **0 vulnerabilities**. Three `warning`-level advisories
   (`RUSTSEC-2025-0141` bincode unmaintained, `RUSTSEC-2025-0161` libsecp256k1
   unmaintained, `RUSTSEC-2026-0097` rand unsound) are all transitive through

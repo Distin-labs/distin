@@ -17,16 +17,18 @@ distin = "4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6"
 [registry]
 url = "https://api.apr.dev"
 
+# Default cluster for local development. Override per command with
+# `--provider.cluster mainnet` (see DEPLOY.md). Deploys are never run from CI.
 [provider]
 cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
+# Mainnet deploy/upgrade authority. Point this at the SQUADS multisig vault
+# (NOT a hot key) before the first mainnet deploy; see DEPLOY.md "Upgrade
+# authority". Left commented so localnet/devnet flows use the default wallet.
+# [provider.mainnet]
+# cluster = "https://api.mainnet-beta.solana.com"
+# wallet = "~/.config/solana/id.json"
+
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-
-[test]
-startup_wait = 5000
-shutdown_wait = 2000
-
-[test.validator]
-url = "https://api.mainnet-beta.solana.com"
+test = "cargo test -p distin && (cd tests-litesvm && cargo test)"

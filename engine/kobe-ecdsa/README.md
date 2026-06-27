@@ -163,7 +163,9 @@ go run ./cmd/operator -config operators/op2.json -phase sign -quorum 0,2 -hash <
   independent go-ethereum ecrecover to the group address.
 - SIMPLIFIED (localhost proof, not a hardened network): no TLS and no PKI (the
   peer directory is a static pinned-key file, not a CA); no peer discovery or
-  reconnection; the abort is **fail-stop**, not GG20 *identifiable* abort (it
-  does not attribute which operator misbehaved and slash it); shares are written
-  to local files rather than an HSM/enclave. Not wired into the on-chain loop
-  yet (Milestones 3-4 use the in-process signer). Not audited for real value.
+  reconnection; in this milestone the abort is **fail-stop**; GG20 *identifiable* abort
+  (attributing the operator and slashing it) is implemented in later milestones
+  (`fault_demo` + `slash_operator_attested`), not in this in-process demo; shares
+  are written to local files rather than an HSM/enclave. This demo is not wired
+  into the on-chain loop (Milestones 3-4 use the in-process signer). Not audited
+  for real value.

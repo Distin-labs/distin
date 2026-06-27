@@ -101,13 +101,8 @@ go run ../kobe-ecdsa/cmd/verify-sig -hash <message_hash> -sig65 <r||s||v> -expec
 **Real vs simplified (M7):** the operators are genuinely separate networked
 processes and signing is triggered by the on-chain request (not a local call);
 the GG20 signature, the program/PDAs/threshold gates, the on-chain record, and
-all three independent ecrecover paths are real. Still simplified: the static
-pinned-key directory (no PKI/CA/discovery), fail-stop abort (no GG20
-identifiable-abort/slash), shares in local files (no HSM), one Solana keypair on
-the on-chain side, the LST oracle placeholder. The FROST/ed25519 path can follow
+all three independent ecrecover paths are real. Still simplified on the M7 networked path: the static pinned-key directory (TLS/PKI exists but is off on this path), fail-stop abort in this demo (GG20 identifiable-abort-to-slash is built and tested, just not wired into this single run), shares in local files (encryption-at-rest exists but is off here, no HSM), one Solana keypair on the on-chain side, the LST oracle placeholder. The FROST/ed25519 path can follow
 the identical wiring (a `net/` operator for the FROST signer) — only GG20/ETH is
 proven networked end to end here.
 
-Remaining to production: re-deploy the reconciled bytecode to devnet via CI
-(needs operator SOL); a security audit (needs a firm); identifiable-abort + TLS
-+ HSM hardening.
+Remaining to production: the reconciled bytecode is now live on devnet, but re-deploy should move to CI (needs operator SOL); a security audit (needs a firm); wiring identifiable-abort end-to-end across the networked-to-chain boundary, plus TLS and HSM hardening on the M7 path.
