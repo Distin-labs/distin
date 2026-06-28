@@ -16,11 +16,25 @@ import dynamic from "next/dynamic"
 const HeroScene = dynamic(() => import("./HeroScene"), { ssr: false })
 const BgScene = dynamic(() => import("./BgScene"), { ssr: false })
 
+// True only if the browser can actually create a WebGL context. On a machine
+// where WebGL is disabled/unavailable, mounting an R3F Canvas throws "Error
+// creating WebGL context" (an unhandled rejection that also shows up as Next dev
+// issues); skipping the mount lets the instant gradient poster stand in cleanly.
+function webglAvailable(): boolean {
+  try {
+    const c = document.createElement("canvas")
+    return !!(c.getContext("webgl2") || c.getContext("webgl"))
+  } catch {
+    return false
+  }
+}
+
 // Mount heavy WebGL only after the browser is idle, so the 3D boot stays out
 // of the initial load / time-to-interactive window. 3D quality is untouched.
 function DeferredMount({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
   useEffect(() => {
+    if (!webglAvailable()) return // no WebGL: leave the poster, never throw
     const w = window as typeof window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
     }
@@ -44,34 +58,62 @@ const LINE = "rgba(255,255,255,0.08)"
 const MUTED = "rgba(255,255,255,0.62)"
 const MONO = '"SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, monospace'
 
-const features = [
-  {
-    img: "/feature_1.png",
-    title: "A native signature, not a wrapped IOU",
-    body: "A quorum of operators runs a real threshold-signature ceremony and produces an ordinary signature on the destination chain's own curve. Ethereum, Bitcoin, Tron and Cosmos see a signature indistinguishable from a single key. No bridge contract, no wrapped asset, no honeypot to drain.",
-  },
-  {
-    img: "/feature_2.png",
-    title: "The secret is never reconstructed",
-    body: "Each operator holds one Shamir share. FROST for Ed25519, GG20 for secp256k1: the protocol combines partial signatures into one signature without the group key ever existing in one place. You can run cargo test and go test and watch an independent verifier accept the result.",
-  },
-  {
-    img: "/feature_3.png",
-    title: "Solana coordinates, accounts, and slashes",
-    body: "An Anchor program owns the whole control plane: it opens a 32-byte signing intent, gates finalization on staked weight and a slot deadline, and slashes a misbehaving operator's bond. It records the real off-chain aggregate; it does not pretend to do the cryptography itself.",
-  },
-  {
-    img: "/feature_4.png",
-    title: "Coordination lives where it is cheap",
-    body: "Multi-round MPC needs several round-trips between operators. On a 12 to 15 second chain each round costs over a minute. On Solana's 400ms slots an interactive ceremony finishes in seconds, so the control plane sits on Solana and the signature lands wherever it is needed.",
-  },
-]
-
 const comparison = [
   ["What moves", "Asset locked, minted, redeemed across chains", "Nothing moves; a native signature is produced"],
   ["What the destination sees", "A wrapped IOU and a bridge contract", "An ordinary signature on its own curve"],
   ["Trust surface", "Bridge validators holding custody", "Bonded operators, slashed on-chain"],
   ["Failure mode", "A drained bridge, stranded wrapped assets", "A request that simply expires"],
+]
+
+// The signature moment — the real threshold-signing lifecycle, ground-truthed to
+// engine/programs/distin/src/lib.rs. Two stages are OFF-CHAIN cryptography, two
+// are ON-CHAIN coordination; the chain RECORDS the aggregate, it never recomputes
+// it. Each stage names the actual instruction or library that does the work.
+const flow = [
+  {
+    k: "01",
+    where: "on-chain",
+    op: "create_signing_request",
+    title: "Post the intent",
+    body: "A user writes one 32-byte signing intent to the Solana program: the destination VM, the message hash, a stake-weight threshold, and a slot deadline. The request account is the whole ask.",
+  },
+  {
+    k: "02",
+    where: "off-chain",
+    op: "kobe · FROST / GG20 rounds",
+    title: "Operators sign, apart",
+    body: "Bonded operators run the real multi-round ceremony off-chain. FROST over Ed25519, GG20 over secp256k1. Each holds one Shamir share; the group key is never assembled in any single place.",
+  },
+  {
+    k: "03",
+    where: "on-chain",
+    op: "submit_partial_signature",
+    title: "Stake answers for them",
+    body: "Each operator posts a participation receipt carrying its staked weight. The chain does no curve math; it counts distinct operators and staked weight against the threshold, inside the deadline.",
+  },
+  {
+    k: "04",
+    where: "on-chain",
+    op: "aggregate_and_emit",
+    title: "Record, then broadcast",
+    body: "The coordinator combines the partials off-chain and posts the finished signature back. The program records it once the threshold is met and emits it; a relayer verifies and broadcasts on the destination chain.",
+  },
+]
+
+// Coordination-latency contrast (concept.json / engine: 400ms slots make
+// multi-round MPC near-real-time; a 12s chain compounds each round into minutes).
+const latency = [
+  { chain: "Solana", slot: "400ms slots", rounds: 3, perRoundMs: 400, label: "≈ 1.2s · interactive" },
+  { chain: "L1 at 12s", slot: "12s blocks", rounds: 3, perRoundMs: 12000, label: "≈ 36s · unusable" },
+  { chain: "L1 at 15s", slot: "15s blocks", rounds: 3, perRoundMs: 15000, label: "≈ 45s · unusable" },
+]
+
+const signsSpec = [
+  { chain: "Ethereum", logo: "/chains/ethereum.png", scheme: "GG20 · secp256k1", note: "Threshold ECDSA, ecrecover to the group address" },
+  { chain: "Bitcoin", logo: "/chains/bitcoin.png", scheme: "GG20 · secp256k1", note: "Native signature, verified against spec vectors" },
+  { chain: "Tron", logo: "/chains/tron.png", scheme: "GG20 · secp256k1", note: "Same curve, same group key, no wrapping" },
+  { chain: "Cosmos", logo: "/chains/cosmos.png", scheme: "FROST · Ed25519", note: "Schnorr threshold, accepted by ed25519-dalek" },
+  { chain: "Aptos", logo: "/chains/aptos.png", scheme: "FROST · Ed25519", note: "One Solana account, a native Move signature" },
 ]
 
 const faqs = [
@@ -85,7 +127,7 @@ const faqs = [
   },
   {
     q: "Is anything live yet?",
-    a: "The reconciled Anchor program is deployed and live on Solana devnet at 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6. The off-chain MPC, the on-chain coordination loop, and a networked operator set are all built and independently verified. There is no audit and no mainnet yet, and that is stated plainly in the docs.",
+    a: "The reconciled Anchor program is deployed and live on Solana devnet at 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6. The off-chain MPC, the on-chain coordination loop, and a networked operator set are all built; the full networked-to-chain loop is exercised on localnet, and the crypto layer is independently verified by cargo test and go test. There is no audit and no mainnet yet, and that is stated plainly in the docs.",
   },
   {
     q: "Is there a token?",
@@ -112,7 +154,33 @@ const css = `
 .feature-row.flip .feature-media { order: 2; }
 .feature-row.flip .feature-copy { order: 1; }
 
+/* Signature-moment flow: four stages on one rail, off-chain vs on-chain banded */
+.flow-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid ${LINE}; }
+.flow-stage { padding: 40px 34px 44px; border-right: 1px solid ${LINE}; position: relative; min-height: 460px; display: flex; flex-direction: column; }
+.flow-stage:last-child { border-right: none; }
+.flow-bands { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: -1px; }
+.flow-band { font-family: ${MONO}; font-size: 18px; letter-spacing: 0.04em; text-transform: uppercase; padding: 16px 34px; border-right: 1px solid ${LINE}; border-bottom: 1px solid ${LINE}; }
+.flow-band:last-child { border-right: none; }
+
+/* Feature compositions — each structurally different, NOT a repeated 2-col */
+.f-bleed { position: relative; min-height: clamp(420px, 52vw, 640px); display: grid; grid-template-columns: 1.1fr 1fr; }
+.f-split { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid ${LINE}; }
+.f-pinned { display: grid; grid-template-columns: 360px 1fr; gap: 64px; align-items: start; }
+
+/* Latency comparison bars (code-drawn, no image) */
+.lat-row { display: grid; grid-template-columns: 220px 1fr; align-items: center; gap: 28px; padding: 22px 0; }
+
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+
+.signs-head { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 48px; }
+.signs-row { display: grid; grid-template-columns: 1.1fr 1fr 1.5fr; align-items: center; gap: 32px; }
+
+@media (max-width: 640px) {
+  .nav { margin: 12px; padding: 12px 16px; }
+  .nav-logo { width: 44px !important; height: 44px !important; }
+  .nav-docs, .nav-wordmark { display: none; }
+  .nav-cta { padding: 11px 18px !important; }
+}
 
 @media (max-width: 980px) {
   .wrap, .wrap-wide { padding: 0 22px; }
@@ -122,10 +190,20 @@ const css = `
   .sec-head { grid-template-columns: 1fr; gap: 24px; }
   .manifesto-grid { grid-template-columns: 1fr; gap: 28px; }
   .cmp-row { grid-template-columns: 1fr; }
+  .signs-head { grid-template-columns: 1fr; gap: 24px; }
+  .signs-row { grid-template-columns: 1fr; gap: 12px; }
   .feature-row { grid-template-columns: 1fr; gap: 28px; }
   .feature-row.flip .feature-media { order: 0; }
   .feature-row.flip .feature-copy { order: 0; }
   .stats-grid { grid-template-columns: 1fr; }
+  .flow-grid { grid-template-columns: 1fr; }
+  .flow-stage { border-right: none; border-bottom: 1px solid ${LINE}; min-height: 0; }
+  .flow-bands { grid-template-columns: 1fr; }
+  .flow-band { border-right: none; }
+  .f-bleed { grid-template-columns: 1fr; }
+  .f-split { grid-template-columns: 1fr; }
+  .f-pinned { grid-template-columns: 1fr; gap: 28px; }
+  .lat-row { grid-template-columns: 1fr; gap: 10px; }
 }
 `
 
@@ -202,6 +280,229 @@ function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   )
 }
 
+/* ── Signature moment ──────────────────────────────────────────────────────
+   The real threshold-signing lifecycle, drawn as one rail. Two stages off-chain
+   (cryptography), two on-chain (coordination). The rail draws across as the
+   section enters and each stage cascades in after it, so the four moves read in
+   order. Every label is ground-truthed to engine/programs/distin/src/lib.rs. */
+function SignatureFlow() {
+  const ref = useRef<HTMLDivElement>(null)
+
+  return (
+    <section ref={ref} style={{ position: "relative", padding: "190px 0 60px", borderTop: `1px solid ${LINE}` }}>
+      <div className="wrap-wide">
+        <Reveal>
+          <div className="sec-head" style={{ marginBottom: 18 }}>
+            <div>
+              <div style={{ marginBottom: 22 }}>
+                <Index n="03 / The signing ceremony" />
+              </div>
+              <h2 style={{ fontSize: "clamp(40px, 6vw, 100px)", fontWeight: 800, letterSpacing: "-0.045em", lineHeight: 0.92, margin: 0 }}>
+                Four moves.
+                <br />
+                <span style={{ color: ACCENT }}>One signature.</span>
+              </h2>
+            </div>
+            <p style={{ fontSize: 20, color: MUTED, margin: 0, maxWidth: 460, justifySelf: "end", lineHeight: 1.55 }}>
+              The signing rounds run off-chain. Solana holds the request, the deadline, and the
+              staked-weight threshold, then records the finished aggregate. The chain coordinates the
+              ceremony; it never recomputes the cryptography.
+            </p>
+          </div>
+        </Reveal>
+
+        {/* off-chain / on-chain legend */}
+        <div style={{ display: "flex", gap: 28, margin: "44px 0 18px", fontFamily: MONO, fontSize: 18, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: MUTED }}>
+            <span style={{ width: 14, height: 14, border: `1px solid ${ACCENT}`, background: "transparent" }} />
+            off-chain crypto
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 10, color: ACCENT_TEXT }}>
+            <span style={{ width: 14, height: 14, background: "rgba(139,92,246,0.22)", border: `1px solid ${ACCENT}` }} />
+            on-chain coordination
+          </span>
+        </div>
+
+        {/* progress rail — draws across as the section enters view */}
+        <div style={{ position: "relative", height: 3, background: LINE, marginBottom: 0, overflow: "hidden" }}>
+          <motion.div
+            initial={{ width: "0%" }}
+            whileInView={{ width: "100%" }}
+            viewport={{ once: true, margin: "-120px" }}
+            transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
+            style={{ position: "absolute", left: 0, top: 0, bottom: 0, background: ACCENT }}
+          />
+        </div>
+
+        {/* four stages on one rail — cascade in left to right, in signing order */}
+        <div className="flow-grid" style={{ borderTop: "none" }}>
+          {flow.map((s, i) => {
+            const onChain = s.where === "on-chain"
+            return (
+              <motion.div
+                key={s.k}
+                className="flow-stage"
+                initial={{ opacity: 0, y: 22 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-80px" }}
+                transition={{ duration: 0.6, delay: 0.25 + i * 0.18, ease: [0.22, 1, 0.36, 1] }}
+                style={{ background: onChain ? "rgba(139,92,246,0.07)" : "transparent" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 30 }}>
+                  <span style={{ fontFamily: MONO, fontSize: 18, letterSpacing: "0.1em", color: ACCENT }}>{s.k}</span>
+                  <span
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 18,
+                      letterSpacing: "0.04em",
+                      textTransform: "uppercase",
+                      color: onChain ? ACCENT_TEXT : MUTED,
+                    }}
+                  >
+                    {s.where}
+                  </span>
+                </div>
+                <h3 style={{ fontSize: "clamp(24px, 1.9vw, 30px)", fontWeight: 700, letterSpacing: "-0.02em", margin: "0 0 18px", lineHeight: 1.1 }}>
+                  {s.title}
+                </h3>
+                <p style={{ fontSize: 19, color: MUTED, margin: "0 0 28px", lineHeight: 1.5, flex: 1 }}>{s.body}</p>
+                <code
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 18,
+                    color: onChain ? ACCENT_TEXT : "rgba(255,255,255,0.78)",
+                    letterSpacing: "0.01em",
+                    borderTop: `1px solid ${LINE}`,
+                    paddingTop: 18,
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {s.op}
+                </code>
+              </motion.div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ── Share diagram: 3 distinct shares fold into one signature, group key absent.
+   2-of-3 quorum, matching the protocol's distinct-operator threshold gate. */
+function ShareDiagram() {
+  return (
+    <svg viewBox="0 0 420 150" role="img" aria-label="Three Shamir shares combine into one signature without ever forming the group key" style={{ width: "100%", height: "auto", display: "block" }}>
+      <title>Shares combine without the group key</title>
+      {[0, 1, 2].map((i) => {
+        const y = 24 + i * 42
+        return (
+          <g key={i}>
+            <rect x="2" y={y} width="120" height="28" fill="none" stroke={LINE} />
+            <text x="14" y={y + 19} fontFamily={MONO} fontSize="14" fill="rgba(255,255,255,0.78)">share {i + 1} / 3</text>
+            <line x1="122" y1={y + 14} x2="232" y2="75" stroke={ACCENT} strokeWidth="1" opacity="0.55" />
+          </g>
+        )
+      })}
+      {/* combine node */}
+      <circle cx="244" cy="75" r="20" fill="rgba(139,92,246,0.14)" stroke={ACCENT} />
+      <text x="244" y="79" textAnchor="middle" fontFamily={MONO} fontSize="13" fill="#c9b3ff">∑</text>
+      <line x1="264" y1="75" x2="300" y2="75" stroke={ACCENT} strokeWidth="1" />
+      {/* output signature */}
+      <rect x="300" y="58" width="116" height="34" fill="rgba(139,92,246,0.1)" stroke={ACCENT} />
+      <text x="358" y="79" textAnchor="middle" fontFamily={MONO} fontSize="14" fill="#fff">1 signature</text>
+      {/* group key crossed out */}
+      <text x="244" y="128" textAnchor="middle" fontFamily={MONO} fontSize="13" fill="rgba(255,255,255,0.4)">group key never assembled</text>
+      <line x1="180" y1="123" x2="308" y2="123" stroke="rgba(255,255,255,0.4)" strokeWidth="1" />
+    </svg>
+  )
+}
+
+/* ── Program spec: what the on-chain Anchor program does vs delegates, exactly. */
+function ProgramSpec() {
+  const rows: [string, string][] = [
+    ["opens", "32-byte signing intent + slot deadline"],
+    ["gates", "distinct operators × staked weight ≥ threshold"],
+    ["records", "the off-chain aggregate, bound to the request"],
+    ["slashes", "a misbehaving bond into the slash pool"],
+  ]
+  return (
+    <div style={{ borderTop: `1px solid ${LINE}` }}>
+      {rows.map(([k, v]) => (
+        <div key={k} style={{ display: "grid", gridTemplateColumns: "104px 1fr", gap: 16, padding: "15px 0", borderBottom: `1px solid ${LINE}`, alignItems: "baseline" }}>
+          <span style={{ fontFamily: MONO, fontSize: 18, color: ACCENT_TEXT, letterSpacing: "0.03em" }}>{k}</span>
+          <span style={{ fontSize: 19, color: MUTED, lineHeight: 1.45 }}>{v}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ── Latency chart: coordination time = rounds × per-round latency, drawn in code.
+   Bar lengths use a perceptual (square-root) scale so Solana stays visible while
+   the slower chains still read as dramatically longer; each carries its real
+   "Nx slower" multiplier against the Solana baseline. */
+function LatencyChart() {
+  const base = latency[0].rounds * latency[0].perRoundMs
+  const totals = latency.map((l) => l.rounds * l.perRoundMs)
+  const maxSqrt = Math.sqrt(Math.max(...totals))
+  return (
+    <div>
+      {latency.map((l, i) => {
+        const total = l.rounds * l.perRoundMs
+        const pct = (Math.sqrt(total) / maxSqrt) * 100
+        const fast = i === 0
+        const mult = Math.round(total / base)
+        return (
+          <div key={l.chain} className="lat-row">
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.01em" }}>{l.chain}</div>
+              <div style={{ fontFamily: MONO, fontSize: 18, color: MUTED, marginTop: 4 }}>{l.slot}</div>
+            </div>
+            <div>
+              <div style={{ position: "relative", height: 34, background: "rgba(255,255,255,0.04)", border: `1px solid ${LINE}` }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  whileInView={{ width: `${Math.max(pct, 6)}%` }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ duration: 1.1, delay: i * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    background: fast ? ACCENT : "rgba(139,92,246,0.2)",
+                    borderRight: `2px solid ${ACCENT}`,
+                  }}
+                />
+                {!fast && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      right: 14,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      fontFamily: MONO,
+                      fontSize: 18,
+                      color: "#fff",
+                      letterSpacing: "0.02em",
+                    }}
+                  >
+                    {mult}× slower
+                  </span>
+                )}
+              </div>
+              <div style={{ fontFamily: MONO, fontSize: 18, color: fast ? ACCENT_TEXT : MUTED, marginTop: 8, letterSpacing: "0.02em" }}>
+                {l.rounds} rounds · {l.label}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function Home() {
   const heroRef = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] })
@@ -259,6 +560,7 @@ export default function Home() {
       <div style={{ position: "relative", zIndex: 1 }}>
       {/* Nav */}
       <nav
+        className="nav"
         style={{
           position: "fixed",
           top: 0,
@@ -276,15 +578,16 @@ export default function Home() {
         }}
       >
         <span style={{ display: "inline-flex", alignItems: "center", gap: 11 }}>
-          <img src="/logo.png" alt="Distin" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 9, flex: "0 0 auto" }} />
-          <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.02em" }}>Distin</span>
+          <img src="/logo-mark.png" alt="Distin" width={60} height={60} className="nav-logo" style={{ width: 60, height: 60, flex: "0 0 auto" }} />
+          <span className="nav-wordmark" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.02em" }}>Distin</span>
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <a href="/docs" style={{ color: MUTED, fontSize: 18, textDecoration: "none" }}>
+          <a href="/docs" className="nav-docs" style={{ color: MUTED, fontSize: 18, textDecoration: "none" }}>
             Docs
           </a>
           <button
             onClick={connectWallet}
+            className="nav-cta"
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -297,6 +600,7 @@ export default function Home() {
               border: "none",
               cursor: "pointer",
               fontFamily: "inherit",
+              whiteSpace: "nowrap",
             }}
           >
             <Wallet size={18} />
@@ -306,7 +610,7 @@ export default function Home() {
       </nav>
 
       {/* Hero */}
-      <section ref={heroRef} style={{ position: "relative", height: "100vh", minHeight: 720, overflow: "hidden" }}>
+      <section ref={heroRef} style={{ position: "relative", minHeight: "max(100vh, 720px)", overflow: "hidden" }}>
         {/* instant poster (matches the dark 3D rest frame) under the deferred WebGL */}
         <div
           aria-hidden
@@ -335,6 +639,28 @@ export default function Home() {
             pointerEvents: "none",
           }}
         />
+        {/* Studio375 signature: giant outline wordmark bleeding off the left edge */}
+        <div
+          aria-hidden
+          className="bleed-mark"
+          style={{
+            position: "absolute",
+            left: "-6%",
+            bottom: "-2%",
+            zIndex: 1,
+            fontSize: "clamp(180px, 30vw, 460px)",
+            fontWeight: 800,
+            lineHeight: 0.74,
+            letterSpacing: "-0.06em",
+            whiteSpace: "nowrap",
+            color: "transparent",
+            WebkitTextStroke: "1px rgba(255,255,255,0.05)",
+            pointerEvents: "none",
+            userSelect: "none",
+          }}
+        >
+          distin
+        </div>
         {/* bottom legibility gradient */}
         <div
           style={{
@@ -348,7 +674,7 @@ export default function Home() {
           style={{
             position: "relative",
             zIndex: 10,
-            height: "100%",
+            minHeight: "max(100vh, 720px)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
@@ -400,30 +726,53 @@ export default function Home() {
                 transition={{ duration: 0.8, delay: 0.35 }}
                 style={{ paddingBottom: 14, borderLeft: `1px solid ${LINE}`, paddingLeft: 28 }}
               >
-                <p style={{ fontSize: 20, color: MUTED, margin: "0 0 30px", lineHeight: 1.55 }}>
+                <p style={{ fontSize: 20, color: MUTED, margin: "0 0 22px", lineHeight: 1.55 }}>
                   A quorum of bonded operators threshold-signs a native transaction for any chain,
                   coordinated and slashed by a Solana program. No bridge, no wrapped asset, no
                   honeypot to drain.
                 </p>
-                <button
-                  onClick={connectWallet}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "16px 34px",
-                    background: ACCENT_BTN,
-                    color: "#fff",
-                    fontSize: 19,
-                    fontWeight: 600,
-                    border: "none",
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  <Wallet size={20} />
-                  {wallet ? shortAddr(wallet) : "Connect Wallet"}
-                </button>
+                <p style={{ fontSize: 19, color: "#fff", margin: "0 0 30px", fontWeight: 600, lineHeight: 1.5 }}>
+                  You are early. Clone it and watch a signature no bridge could fake verify in{" "}
+                  <span style={{ color: ACCENT_TEXT }}>under two minutes</span>.
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 18 }}>
+                  <button
+                    onClick={connectWallet}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "16px 34px",
+                      background: ACCENT_BTN,
+                      color: "#fff",
+                      fontSize: 19,
+                      fontWeight: 600,
+                      border: "none",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <Wallet size={20} />
+                    {wallet ? shortAddr(wallet) : "Connect Wallet"}
+                  </button>
+                  <a
+                    href="/docs"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      fontSize: 19,
+                      fontWeight: 600,
+                      color: "#fff",
+                      textDecoration: "none",
+                      borderBottom: `1px solid ${ACCENT}`,
+                      paddingBottom: 4,
+                    }}
+                  >
+                    Verify it yourself
+                    <ArrowRight size={18} color={ACCENT_TEXT} />
+                  </a>
+                </div>
               </motion.div>
             </div>
           </motion.div>
@@ -582,8 +931,70 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features */}
-      <section style={{ position: "relative", padding: "150px 0 220px", overflow: "hidden", borderTop: `1px solid ${LINE}` }}>
+      {/* What one account signs — Studio375 sparse multi-column spec list */}
+      <section style={{ padding: "0 0 200px" }}>
+        <div className="wrap">
+          <Reveal>
+            <div className="signs-head" style={{ marginBottom: 64 }}>
+              <div>
+                <div style={{ marginBottom: 22 }}>
+                  <Index n="02b / What one account signs" />
+                </div>
+                <h2
+                  style={{
+                    fontSize: "clamp(40px, 5.4vw, 84px)",
+                    fontWeight: 800,
+                    letterSpacing: "-0.04em",
+                    lineHeight: 0.94,
+                    margin: 0,
+                  }}
+                >
+                  Five chains.
+                  <br />
+                  <span style={{ color: ACCENT }}>One key.</span>
+                </h2>
+              </div>
+              <p style={{ fontSize: 20, color: MUTED, margin: 0, maxWidth: 420, justifySelf: "end" }}>
+                Each destination receives a signature on its own curve, from the same Solana account.
+                Two schemes, branched per VM family. Nothing is wrapped.
+              </p>
+            </div>
+          </Reveal>
+          <div style={{ borderTop: `1px solid ${LINE}` }}>
+            {signsSpec.map((s, i) => (
+              <Reveal key={s.chain} delay={i * 0.05}>
+                <div
+                  className="signs-row"
+                  style={{ padding: "30px 4px", borderBottom: `1px solid ${LINE}` }}
+                >
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 16 }}>
+                    <img
+                      src={s.logo}
+                      alt={`${s.chain} logo`}
+                      width={28}
+                      height={28}
+                      loading="lazy"
+                      decoding="async"
+                      style={{ width: 28, height: 28, flex: "0 0 auto" }}
+                    />
+                    <span style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em" }}>{s.chain}</span>
+                  </div>
+                  <div style={{ fontFamily: MONO, fontSize: 18, color: ACCENT_TEXT, letterSpacing: "0.03em" }}>
+                    {s.scheme}
+                  </div>
+                  <div style={{ fontSize: 19, color: MUTED, lineHeight: 1.5 }}>{s.note}</div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* === SIGNATURE MOMENT: the threshold-signing lifecycle on one rail === */}
+      <SignatureFlow />
+
+      {/* === Architecture — four structurally DISTINCT compositions === */}
+      <section style={{ position: "relative", padding: "110px 0 180px", overflow: "hidden", borderTop: `1px solid ${LINE}` }}>
         <div
           style={{
             position: "absolute",
@@ -591,15 +1002,15 @@ export default function Home() {
             backgroundImage: "url(/bg_features.png)",
             backgroundSize: "cover",
             backgroundPosition: "center",
-            opacity: 0.1,
+            opacity: 0.08,
             pointerEvents: "none",
           }}
         />
         <div className="wrap-wide" style={{ position: "relative" }}>
           <Reveal>
-            <div style={{ marginBottom: 110, maxWidth: 1000 }}>
+            <div style={{ marginBottom: 60, maxWidth: 1100 }}>
               <div style={{ marginBottom: 24 }}>
-                <Index n="03 / Architecture" />
+                <Index n="04 / Architecture" />
               </div>
               <h2
                 style={{
@@ -610,79 +1021,129 @@ export default function Home() {
                   margin: 0,
                 }}
               >
-Shares in, one
+                Shares in, one
                 <br />
                 chain-valid signature out.
               </h2>
             </div>
           </Reveal>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 130 }}>
-            {features.map((f, i) => {
-              const flip = i % 2 === 1
-              return (
-                <Reveal key={i}>
-                  <div className={`feature-row${flip ? " flip" : ""}`}>
-                    <div className="feature-media" style={{ position: "relative" }}>
-                      <motion.div
-                        whileHover={{ scale: 1.015 }}
-                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                        style={{
-                          position: "relative",
-                          height: "clamp(300px, 38vw, 520px)",
-                          overflow: "hidden",
-                          border: `1px solid ${LINE}`,
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            backgroundImage: `url(${f.img})`,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                            animation: "kenburns 16s ease-in-out infinite alternate",
-                          }}
-                        />
-                        <div
-                          aria-hidden
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            [flip ? "right" : "left"]: 0,
-                            padding: "20px 28px",
-                            fontSize: "clamp(56px, 7vw, 104px)",
-                            fontWeight: 800,
-                            letterSpacing: "-0.04em",
-                            lineHeight: 1,
-                            color: "transparent",
-                            WebkitTextStroke: "1px rgba(255,255,255,0.45)",
-                          }}
-                        >
-                          0{i + 1}
-                        </div>
-                      </motion.div>
-                    </div>
-                    <div className="feature-copy">
-                      <h3
-                        style={{
-                          fontSize: "clamp(32px, 3.6vw, 52px)",
-                          fontWeight: 700,
-                          margin: "0 0 22px",
-                          letterSpacing: "-0.03em",
-                          lineHeight: 1.02,
-                        }}
-                      >
-                        {f.title}
-                      </h3>
-                      <p style={{ fontSize: 20, color: MUTED, margin: 0, maxWidth: 440, lineHeight: 1.55 }}>
-                        {f.body}
-                      </p>
-                    </div>
-                  </div>
-                </Reveal>
-              )
-            })}
+          {/* A — full-bleed editorial: native signature, atmosphere + overlaid copy */}
+          <Reveal>
+            <div className="f-bleed" style={{ border: `1px solid ${LINE}`, marginBottom: 28 }}>
+              <div
+                style={{
+                  position: "relative",
+                  overflow: "hidden",
+                  minHeight: "clamp(360px, 44vw, 560px)",
+                  borderRight: `1px solid ${LINE}`,
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    backgroundImage: "url(/feature_1.png)",
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    animation: "kenburns 18s ease-in-out infinite alternate",
+                  }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "linear-gradient(105deg, transparent 30%, rgba(6,6,6,0.7) 100%)",
+                  }}
+                />
+                <div
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    left: 28,
+                    bottom: 18,
+                    fontFamily: MONO,
+                    fontSize: 18,
+                    letterSpacing: "0.06em",
+                    color: ACCENT_TEXT,
+                  }}
+                >
+                  Ed25519 / secp256k1 · native curve
+                </div>
+              </div>
+              <div style={{ padding: "clamp(36px, 4vw, 72px)", display: "flex", flexDirection: "column", justifyContent: "center", background: "rgba(13,13,13,0.6)" }}>
+                <div style={{ marginBottom: 22 }}>
+                  <Index n="A" />
+                </div>
+                <h3 style={{ fontSize: "clamp(30px, 3.4vw, 50px)", fontWeight: 700, margin: "0 0 20px", letterSpacing: "-0.03em", lineHeight: 1.05 }}>
+                  A native signature, not a wrapped IOU
+                </h3>
+                <p style={{ fontSize: 20, color: MUTED, margin: 0, maxWidth: 520, lineHeight: 1.55 }}>
+                  A quorum of operators runs a real threshold ceremony and produces an ordinary
+                  signature on the destination chain&rsquo;s own curve. Ethereum, Bitcoin, Tron and
+                  Cosmos see a signature indistinguishable from a single key. No bridge contract, no
+                  wrapped asset, no honeypot to drain.
+                </p>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* B + C — asymmetric pair: a blueprint card and a code-spec card, side by side */}
+          <div className="f-split" style={{ marginBottom: 28 }}>
+            <Reveal>
+              <div style={{ padding: "clamp(36px, 4vw, 64px)", borderRight: `1px solid ${LINE}`, height: "100%", boxSizing: "border-box" }}>
+                <div style={{ marginBottom: 22 }}>
+                  <Index n="B" />
+                </div>
+                <h3 style={{ fontSize: "clamp(28px, 2.8vw, 42px)", fontWeight: 700, margin: "0 0 20px", letterSpacing: "-0.03em", lineHeight: 1.06 }}>
+                  The secret is never reconstructed
+                </h3>
+                <p style={{ fontSize: 20, color: MUTED, margin: "0 0 34px", lineHeight: 1.55 }}>
+                  Each operator holds one Shamir share. FROST for Ed25519, GG20 for secp256k1: the
+                  protocol combines partials into one signature without the group key ever existing in
+                  one place.
+                </p>
+                <ShareDiagram />
+              </div>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <div style={{ padding: "clamp(36px, 4vw, 64px)", height: "100%", boxSizing: "border-box", background: "rgba(13,13,13,0.5)" }}>
+                <div style={{ marginBottom: 22 }}>
+                  <Index n="C" />
+                </div>
+                <h3 style={{ fontSize: "clamp(28px, 2.8vw, 42px)", fontWeight: 700, margin: "0 0 20px", letterSpacing: "-0.03em", lineHeight: 1.06 }}>
+                  Solana coordinates, accounts, slashes
+                </h3>
+                <p style={{ fontSize: 20, color: MUTED, margin: "0 0 30px", lineHeight: 1.55 }}>
+                  One Anchor program owns the control plane: it opens a 32-byte intent, gates
+                  finalization on staked weight and a slot deadline, and slashes a misbehaving bond.
+                  It records the real off-chain aggregate; it never pretends to do the curve math.
+                </p>
+                <ProgramSpec />
+              </div>
+            </Reveal>
           </div>
+
+          {/* D — pinned text + code-drawn latency comparison (no image) */}
+          <Reveal>
+            <div className="f-pinned" style={{ border: `1px solid ${LINE}`, padding: "clamp(36px, 4vw, 64px)" }}>
+              <div>
+                <div style={{ marginBottom: 22 }}>
+                  <Index n="D" />
+                </div>
+                <h3 style={{ fontSize: "clamp(28px, 2.8vw, 42px)", fontWeight: 700, margin: "0 0 20px", letterSpacing: "-0.03em", lineHeight: 1.06 }}>
+                  Coordination lives where it is cheap
+                </h3>
+                <p style={{ fontSize: 20, color: MUTED, margin: 0, lineHeight: 1.55 }}>
+                  Multi-round MPC needs several round-trips. On a 12 to 15 second chain each round
+                  costs over a minute. On Solana&rsquo;s 400ms slots the same ceremony finishes in
+                  seconds, so the control plane sits on Solana and the signature lands wherever it is
+                  needed.
+                </p>
+              </div>
+              <LatencyChart />
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -701,7 +1162,7 @@ Shares in, one
           <div className="stats-grid">
             {[
               { to: 2, suffix: "-of-n", label: "threshold quorum signs, secret never assembled" },
-              { to: 7, suffix: " milestones", label: "built and independently verified, M1 to M7" },
+              { to: 9, suffix: " milestones", label: "built, crypto layer independently verified, M1 to M9" },
               { to: 0, suffix: "", label: "wrapped assets, bridge contracts, honeypots" },
             ].map((s, i) => (
               <Reveal key={i} delay={i * 0.1}>
@@ -737,7 +1198,7 @@ Shares in, one
             <Reveal>
               <div style={{ position: "sticky", top: 120 }}>
                 <div style={{ marginBottom: 22 }}>
-                  <Index n="04 / Answers" />
+                  <Index n="05 / Answers" />
                 </div>
                 <h2
                   style={{
@@ -818,7 +1279,7 @@ Shares in, one
         <div style={{ position: "absolute", inset: 0, background: "rgba(6,6,6,0.66)" }} />
         <div className="wrap-wide" style={{ position: "relative" }}>
           <Reveal>
-            <Label color="#fff">Get started</Label>
+            <Label color="#fff">You are early</Label>
             <h2
               style={{
                 fontSize: "clamp(56px, 11vw, 180px)",
@@ -829,12 +1290,15 @@ Shares in, one
                 maxWidth: 1300,
               }}
             >
-Verify it yourself.
+              Don&rsquo;t take
+              <br />
+              our word.
             </h2>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 40, marginTop: 48 }}>
               <p style={{ fontSize: 21, color: MUTED, margin: 0, maxWidth: 520, lineHeight: 1.55 }}>
-                Clone the repo, run cargo test and go test, and watch an independent verifier accept a
-                threshold signature the group key never produced in one place.
+                Clone the repo, run cargo test and go test, and in under two minutes watch an
+                independent verifier accept a threshold signature the group key never produced in one
+                place. The proof is the whole pitch. Connect a wallet and get in before it ships.
               </p>
               <button
                 onClick={connectWallet}

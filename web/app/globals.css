@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
+/* Distin is a dark-only brand (site_content.json: bg #060606). Pin the page
+   background dark at the html/body level so nothing white ever shows through —
+   the deferred WebGL layer is transparent until idle, and an unpainted gap on
+   overscroll/bounce must read as the brand black, never the browser default. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #060606;
+  --foreground: #ededed;
 }
 
 @theme inline {
@@ -12,15 +16,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: #060606;
 }
 
 body {
-  background: var(--background);
+  background: #060606;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -41,4 +42,17 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .hero-h1 { animation: none; }
+}
+
+/* Studio375 signature: a giant outline wordmark bleeding off the left edge,
+   drifting slowly so the hero feels alive rather than static. */
+@keyframes bleedDrift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-3.5%); }
+}
+.bleed-mark {
+  animation: bleedDrift 18s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bleed-mark { animation: none; }
 }
