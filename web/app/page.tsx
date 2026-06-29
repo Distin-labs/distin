@@ -558,7 +558,7 @@ export default function Home() {
         }}
       >
         <span style={{ display: "inline-flex", alignItems: "center", gap: 11 }}>
-          <img src="/logo-mark.png" alt="Distin" width={60} height={60} className="nav-logo" style={{ width: 60, height: 60, flex: "0 0 auto" }} />
+          <img src="/logo-mark.png" alt="Distin" width={60} height={60} className="nav-logo" style={{ width: 60, height: 60, flex: "0 0 auto", borderRadius: 13 }} />
           <span className="nav-wordmark" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.02em" }}>Distin</span>
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
