@@ -45,3 +45,10 @@ logo_prompt.txt
 
 # logo exploration scratch
 logo_options/
+
+# operator-only review tools + experiments (not for the public repo)
+marketing/_view.html
+marketing/_view_kr.html
+web/public/story.html
+*.bak.png
+*.triangle.bak.png
