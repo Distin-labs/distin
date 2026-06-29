@@ -91,7 +91,7 @@ Honesty is the point. Here is the exact line between what is built and verified 
 - **On-chain program, reconciled — and live on devnet.** The fake byte-fold "signature" was removed; `aggregate_and_emit` now takes the *real* off-chain aggregate as input and enforces threshold + slot deadline. Operator lifecycle, bonding, and slashing are implemented in full. The reconciled bytecode is deployed and live on Solana **devnet** at `4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6` (deploy tx `3LAt17P8Zmh2EYyphzVF4EHNY1uffkaJp7cp4V2yUpNh3MoV82iP5mEvdg18XMBUnKwANDGANCj43mEVRJUh6ZAQ`). (`engine/programs/distin`)
 
 **Next — not done, and not claimed to be:**
-- **Networked-operator hardening.** Today's network proof is localhost: no TLS, no PKI/CA (a static pinned-key directory), and a fail-stop abort rather than GG20 *identifiable* abort (it does not yet attribute and slash the misbehaving operator). Shares live in local files, not an HSM.
+- **Networked-operator hardening.** Today's network proof is localhost: no TLS, no PKI/CA (a static pinned-key directory), and a fail-stop abort in this networked demo. GG20 *identifiable*-abort-to-slash is built and tested in SVM (`slash_operator_attested`), but the networked run and the on-chain slash are still proven in two halves over one canonical fault report, not yet in a single end-to-end run. Shares live in local files, not an HSM.
 - **Security audit.** `tss-lib` and `frost-ed25519` are audited; *this integration and the on-chain program are not*. Nothing here is audited for real value.
 - **FROST networked path.** Only the GG20/ETH path is proven networked end-to-end; the FROST signer follows the identical wiring but its `net/` operator isn't built yet.
 

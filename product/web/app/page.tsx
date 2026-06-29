@@ -166,9 +166,7 @@ export default function Page() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          <div style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 12, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", display: "grid", placeItems: "center" }}>
-            <Layers size={22} color="var(--accent)" />
-          </div>
+          <img src="/logo.png" alt="Distin" width={40} height={40} style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 12, objectFit: "cover" }} />
           <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>Distin</span>
         </div>
 
