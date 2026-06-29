@@ -1,4 +1,4 @@
-![Distin](banner.png)
+![Distin](banner.png?v=3)
 
 # Distin
 
