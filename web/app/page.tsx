@@ -267,17 +267,8 @@ function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
   )
 }
 
-function Reveal({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {children}
-    </motion.div>
-  )
+function Reveal({ children }: { children: React.ReactNode; delay?: number }) {
+  return <div>{children}</div>
 }
 
 /* ── Signature moment ──────────────────────────────────────────────────────
@@ -325,12 +316,8 @@ function SignatureFlow() {
 
         {/* progress rail — draws across as the section enters view */}
         <div style={{ position: "relative", height: 3, background: LINE, marginBottom: 0, overflow: "hidden" }}>
-          <motion.div
-            initial={{ width: "0%" }}
-            whileInView={{ width: "100%" }}
-            viewport={{ once: true, margin: "-120px" }}
-            transition={{ duration: 1.6, ease: [0.22, 1, 0.36, 1] }}
-            style={{ position: "absolute", left: 0, top: 0, bottom: 0, background: ACCENT }}
+          <div
+            style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "100%", background: ACCENT }}
           />
         </div>
 
@@ -342,10 +329,6 @@ function SignatureFlow() {
               <motion.div
                 key={s.k}
                 className="flow-stage"
-                initial={{ opacity: 0, y: 22 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.6, delay: 0.25 + i * 0.18, ease: [0.22, 1, 0.36, 1] }}
                 style={{ background: onChain ? "rgba(139,92,246,0.07)" : "transparent" }}
               >
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 30 }}>
@@ -461,16 +444,13 @@ function LatencyChart() {
             </div>
             <div>
               <div style={{ position: "relative", height: 34, background: "rgba(255,255,255,0.04)", border: `1px solid ${LINE}` }}>
-                <motion.div
-                  initial={{ width: 0 }}
-                  whileInView={{ width: `${Math.max(pct, 6)}%` }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ duration: 1.1, delay: i * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                <div
                   style={{
                     position: "absolute",
                     left: 0,
                     top: 0,
                     bottom: 0,
+                    width: `${Math.max(pct, 6)}%`,
                     background: fast ? ACCENT : "rgba(139,92,246,0.2)",
                     borderRight: `2px solid ${ACCENT}`,
                   }}
@@ -682,9 +662,6 @@ export default function Home() {
         >
           <div className="wrap-wide" style={{ paddingTop: 132 }}>
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
               className="hero-top"
             >
               <Label color="#fff">No bridge / Solana-coordinated threshold signing</Label>
@@ -721,9 +698,6 @@ export default function Home() {
                 </span>
               </h1>
               <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.35 }}
                 style={{ paddingBottom: 14, borderLeft: `1px solid ${LINE}`, paddingLeft: 28 }}
               >
                 <p style={{ fontSize: 20, color: MUTED, margin: "0 0 22px", lineHeight: 1.55 }}>
