@@ -14,11 +14,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://distin.xyz"),
-  title: "Distin — One Solana account, every chain, no bridges",
+  title: "Distin: One Solana account, every chain, no bridges",
   description:
     "Distin turns Solana into a control plane for cross-chain signing. A quorum of bonded operators threshold-signs a native transaction for any chain, coordinated and slashed on-chain. No bridge, no wrapped assets.",
   openGraph: {
-    title: "Distin — One Solana account, every chain, no bridges",
+    title: "Distin: One Solana account, every chain, no bridges",
     description:
       "A quorum of bonded operators threshold-signs a native transaction for any chain, coordinated by a Solana program. The group secret is never reconstructed.",
     url: "/",
@@ -28,14 +28,14 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Distin — One Solana account, every chain, no bridges",
+        alt: "Distin: One Solana account, every chain, no bridges",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Distin — One Solana account, every chain, no bridges",
+    title: "Distin: One Solana account, every chain, no bridges",
     description:
       "Cross-chain threshold signing coordinated on Solana. No bridge, no wrapped assets.",
     images: ["/og.png"],
