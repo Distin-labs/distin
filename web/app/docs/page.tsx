@@ -19,7 +19,7 @@ export default function DocsPage() {
         style={{ borderColor: "rgba(255,255,255,0.07)" }}
       >
         <Link href="/" className="flex items-center gap-2.5 mb-10">
-          <img src="/logo.png" alt="" width={28} height={28} />
+          <img src="/logo-mark.png" alt="" width={28} height={28} />
           <span className="font-bold tracking-wide" style={{ fontSize: 18 }}>Distin Docs</span>
         </Link>
         <nav className="flex flex-col gap-1">
