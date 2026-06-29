@@ -428,7 +428,11 @@ pub mod distin {
         for acc in ctx.remaining_accounts.iter() {
             // Each remaining account must be a valid Operator PDA of THIS protocol.
             let op: Account<Operator> = Account::try_from(acc)?;
-            require_keys_eq!(op.protocol, ctx.accounts.protocol.key(), DistinError::Unauthorized);
+            require_keys_eq!(
+                op.protocol,
+                ctx.accounts.protocol.key(),
+                DistinError::Unauthorized
+            );
             // It must not be the culprit, and its key must not be double-counted.
             if op.attestation_pubkey == culprit_pubkey {
                 continue;
@@ -823,8 +827,7 @@ pub const REASON_IDENTIFIABLE_ABORT: u8 = 1;
 
 /// The Ed25519 native program id, against which the sibling signature-verifying
 /// instruction is checked. (Pinned as bytes so the program needs no extra dep.)
-const ED25519_PROGRAM_ID: Pubkey =
-    anchor_lang::solana_program::ed25519_program::ID;
+const ED25519_PROGRAM_ID: Pubkey = anchor_lang::solana_program::ed25519_program::ID;
 
 /// Number of DISTINCT operator attestations required to slash a culprit:
 /// `ceil(operator_count * threshold_bps / 10_000)`, floored to at least 1. This
@@ -955,7 +958,10 @@ fn parse_ed25519_signers(data: &[u8], expected_msg: &[u8; 32]) -> Result<Vec<[u8
             signers.push(pk);
         }
     }
-    require!(!signers.is_empty(), DistinError::MissingAttestationSignatures);
+    require!(
+        !signers.is_empty(),
+        DistinError::MissingAttestationSignatures
+    );
     Ok(signers)
 }
 
@@ -1575,10 +1581,17 @@ mod tests {
 
         let data = build_ed25519_ix_data(&entries, &sig);
         let signers = parse_ed25519_signers(&data, &digest).unwrap();
-        assert_eq!(signers.len(), 2, "only the two digest-signers must be counted");
+        assert_eq!(
+            signers.len(),
+            2,
+            "only the two digest-signers must be counted"
+        );
         assert!(signers.contains(&pk_a));
         assert!(signers.contains(&pk_b));
-        assert!(!signers.contains(&pk_c), "a signer over an unrelated message must NOT count");
+        assert!(
+            !signers.contains(&pk_c),
+            "a signer over an unrelated message must NOT count"
+        );
     }
 
     /// A malformed instruction (truncated offsets) is rejected, never silently
