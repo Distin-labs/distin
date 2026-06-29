@@ -44,8 +44,7 @@ you just watched verify.
 Why on Solana: multi-round MPC needs a control plane that settles rounds faster
 than operators drop offline. FROST is 3 rounds, GG20 is ~6. On a 12-second chain
 a three-round ceremony takes 36 seconds, too slow to keep operators in the room.
-Solana's ~400ms slot finishes it in seconds. The coordination lives on-chain as
-ordinary transactions, so the staked collateral can actually witness a fault.
+Solana's ~400ms slot finishes it in seconds. The coordination lives on-chain as ordinary transactions, so the staked collateral has a public record of who took part, and an attestation-verified fault to slash against.
 
 The honest cost, stated everywhere: a threshold of colluding operators can still
 sign your asset away. Slashing makes that expensive, not impossible. One account
@@ -115,9 +114,7 @@ signer has to see round N before computing round N+1. Host those rounds on a
 drop offline inside a window that long, so signing fails more the more
 decentralized you make it.
 
-A round per 400ms slot. Three rounds in about a second. The coordination is fast
-enough that you do not feel it happening, which is the only condition under which
-it can run on-chain at all.
+A round coordinated per 400ms slot. Three rounds in about a second. The coordination is fast enough that you do not feel it happening, which is the only condition under which it can settle on-chain at all.
 
 ---
 
@@ -155,9 +152,7 @@ transcript into an on-chain court and prove misbehavior after the fact. Almost
 nobody does. So the stake is a deposit with a label on it, not a condition the
 ledger can enforce.
 
-Distin puts the rounds on-chain so the stake watches the actual crime. The fault
-is a row in Solana state. The slash is plain program logic reading that row, in
-the same transaction that catches it.
+Distin puts the participating set and the deadline on-chain, so the stake is bonded against a public record of who showed up. When operators name a cheater off-chain, a quorum signs a fault report, and the program verifies that quorum on-chain through Solana's Ed25519 program and slashes the named operator. Plain program logic, no admin vote.
 
 ---
 
@@ -304,9 +299,7 @@ How Distin sits next to what exists:
   Solana.
 - Lit PKP / Particle Universal Accounts: account abstraction over an off-chain
   MPC network. Same off-chain-coordination assumption.
-- Distin: native asset control like NEAR, but the signing rounds run on Solana as
-  transactions, so the staked collateral can witness and punish a protocol fault,
-  and the threshold ceremony is reproducible from a clean clone in two commands.
+- Distin: native asset control like NEAR, but the request, the staked operator set, and the slashing all live on Solana, so a cryptographically-named fault is punished on-chain with no admin, and the threshold ceremony is reproducible from a clean clone in two commands.
 
 We are not claiming we invented the category. We moved the one thing everyone else
 left off-chain, and we made the cryptography checkable on the spot.

@@ -83,7 +83,7 @@ S7: LST bonding transaction
 - Tag: #EconomicSecurity
 - Frame: the real devnet tx where a Token-2022 TransferChecked moved LST into the
   bond_vault PDA.
-- Caption: "Operators lock LST via Token-2022 TransferChecked into the bond_vault PDA. Slashable on equivocation."
+- Caption: "Operators lock LST via Token-2022 TransferChecked into the bond_vault PDA. Slashable when a quorum of operators attests to a fault."
 
 ### Videos (V1–V3)
 
@@ -230,8 +230,7 @@ The signing scheme is fixed on the request and branches at the instruction level
 FROST Ed25519 for the SVM family, where Ed25519 is native. GG20 secp256k1 for
 EVM, Bitcoin, Tron, and Cosmos, where the destination wants ECDSA.
 
-Submit a partial that doesn't match the scheme declared in the request and the
-program throws SchemeMismatch. Hard reject. No coercion across curve families.
+The signing scheme is fixed by the request itself: every partial inherits the scheme the request declared, so a mismatched scheme cannot even be submitted. The branch is decided once, at request creation. No coercion across curve families.
 
 [attach S4]
 
