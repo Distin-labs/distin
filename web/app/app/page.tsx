@@ -232,13 +232,35 @@ export default function Page() {
           <img src="/logo.png" alt="Distin" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 10, objectFit: "cover" }} />
           <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.01em" }}>Distin</span>
         </div>
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", color: "var(--text2)", padding: "8px 12px 6px" }}>MENU</div>
         {navItem(<Zap size={19} />, "Sign", view === "sign", () => setView("sign"))}
         {navItem(<BarChart3 size={19} />, "Dashboard", view === "dashboard", () => setView("dashboard"))}
         {navItem(<Radio size={19} />, "Activity", false, () => { setView("sign"); setTimeout(() => document.getElementById("feed")?.scrollIntoView({ behavior: "smooth" }), 50); })}
+
+        <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", color: "var(--text2)", padding: "18px 12px 6px" }}>RESOURCES</div>
         {navItem(<FileText size={19} />, "Docs", false, undefined, "https://distin.xyz/docs")}
         {navItem(<Code size={19} />, "GitHub", false, undefined, "https://github.com/Distin-labs/distin")}
-        <div style={{ marginTop: "auto", fontSize: 15, color: "var(--text2)", padding: "10px 8px", lineHeight: 1.5 }}>
-          Threshold signing,<br />coordinated on Solana.
+
+        {/* Live protocol status — fills the rail, pinned near the bottom */}
+        <div style={{ marginTop: "auto" }}>
+          <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: "13px 13px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span className="live-dot" style={{ width: 8, height: 8, borderRadius: 999, background: ready ? "var(--accent)" : "var(--warn)", boxShadow: ready ? "0 0 8px var(--accent)" : "none", flex: "0 0 auto" }} />
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{ready ? "Live on devnet" : "Connecting…"}</span>
+            </div>
+            {([
+              ["Operators", proto ? String(proto.operatorCount) : "—"],
+              ["Requests", proto ? String(Number(proto.requestNonce)) : "—"],
+            ] as [string, string][]).map(([k, v]) => (
+              <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 15, padding: "3px 0" }}>
+                <span style={{ color: "var(--text2)" }}>{k}</span>
+                <span style={{ fontWeight: 700, fontFamily: mono }}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 14, color: "var(--text2)", padding: "12px 8px 2px", lineHeight: 1.5 }}>
+            Threshold signing,<br />coordinated on Solana.
+          </div>
         </div>
       </aside>
 
@@ -282,32 +304,86 @@ export default function Page() {
             ))}
           </div>
 
-          <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: "22px 22px" }}>
-            <div style={{ fontSize: 21, fontWeight: 700, marginBottom: 4 }}>Requests by scheme</div>
-            <div style={{ fontSize: 16, color: "var(--text2)", marginBottom: 20 }}>Live devnet, read straight from on-chain accounts. No historical index — nothing fabricated.</div>
-            {([
-              ["FROST · Ed25519", "Aptos / SVM / Cosmos", dash?.frost ?? 0, "#23dcc8"],
-              ["GG20 · secp256k1", "Bitcoin / Ethereum / Tron", dash?.gg20 ?? 0, "#3aa0ff"],
-            ] as [string, string, number, string][]).map(([name, chains, count, color]) => {
-              const total = Math.max(1, (dash?.frost ?? 0) + (dash?.gg20 ?? 0));
-              const pct = Math.round((count / total) * 100);
-              return (
-                <div key={name} style={{ marginBottom: 18 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-                    <div><span style={{ fontSize: 18, fontWeight: 700 }}>{name}</span> <span style={{ fontSize: 16, color: "var(--text2)" }}>· {chains}</span></div>
-                    <span style={{ fontSize: 20, fontWeight: 800, fontFamily: mono }}>{count.toLocaleString()}</span>
+          {(() => {
+            const f = dash?.frost ?? 0, g = dash?.gg20 ?? 0, total = f + g;
+            const C = 2 * Math.PI * 46;
+            const fFrac = total ? f / total : 0;
+            const chains: [string, number, string][] = [
+              ["Bitcoin", dash?.byVm?.[4] ?? 0, "#f7931a"],
+              ["Ethereum", dash?.byVm?.[1] ?? 0, "#8aa0e8"],
+              ["Tron", dash?.byVm?.[2] ?? 0, "#e0746e"],
+              ["Cosmos", dash?.byVm?.[3] ?? 0, "#aab0cc"],
+              ["Aptos", dash?.byVm?.[0] ?? 0, "#5fd8c4"],
+            ];
+            const maxVm = Math.max(1, ...chains.map((c) => c[1]));
+            const settlePct = dash && dash.totalRequests ? Math.round((dash.settled / dash.totalRequests) * 100) : 0;
+            const card: React.CSSProperties = { background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: "22px 22px", minWidth: 0 };
+            const cardTitle: React.CSSProperties = { fontSize: 20, fontWeight: 700, marginBottom: 3 };
+            const cardSub: React.CSSProperties = { fontSize: 15, color: "var(--text2)", marginBottom: 18 };
+            return (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 14, marginBottom: 14 }}>
+                  {/* Scheme split donut */}
+                  <div style={card}>
+                    <div style={cardTitle}>Signature scheme</div>
+                    <div style={cardSub}>Live on-chain split, nothing fabricated.</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 26 }}>
+                      <svg width={128} height={128} viewBox="0 0 120 120" style={{ transform: "rotate(-90deg)", flex: "0 0 auto" }}>
+                        <circle cx="60" cy="60" r="46" fill="none" stroke="var(--bg3)" strokeWidth="15" />
+                        <circle cx="60" cy="60" r="46" fill="none" stroke="#3aa0ff" strokeWidth="15" strokeDasharray={`${C} ${C}`} strokeDashoffset={0} strokeLinecap="butt" />
+                        <circle cx="60" cy="60" r="46" fill="none" stroke="#23dcc8" strokeWidth="15" strokeDasharray={`${fFrac * C} ${C}`} strokeDashoffset={0} strokeLinecap="butt" style={{ transition: "stroke-dasharray 0.5s ease" }} />
+                        <text x="60" y="60" textAnchor="middle" dominantBaseline="central" transform="rotate(90 60 60)" fill="var(--text)" fontSize="26" fontWeight="800" fontFamily={mono}>{total}</text>
+                      </svg>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
+                        {([["FROST · Ed25519", f, "#23dcc8"], ["GG20 · secp256k1", g, "#3aa0ff"]] as [string, number, string][]).map(([n, c, col]) => (
+                          <div key={n} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ width: 12, height: 12, borderRadius: 4, background: col, flex: "0 0 auto" }} />
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 17, fontWeight: 700 }}>{n}</div>
+                              <div style={{ fontSize: 15, color: "var(--text2)", fontFamily: mono }}>{c} · {total ? Math.round((c / total) * 100) : 0}%</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ height: 12, borderRadius: 999, background: "var(--bg3)", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 999, transition: "width 0.4s ease" }} />
+
+                  {/* Requests by chain */}
+                  <div style={card}>
+                    <div style={cardTitle}>Requests by chain</div>
+                    <div style={cardSub}>Native signatures produced per target chain.</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+                      {chains.map(([name, count, col]) => (
+                        <div key={name} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <span style={{ width: 66, fontSize: 16, color: "var(--text2)", flex: "0 0 auto" }}>{name}</span>
+                          <div style={{ flex: 1, height: 14, borderRadius: 999, background: "var(--bg3)", overflow: "hidden", minWidth: 0 }}>
+                            <div style={{ height: "100%", width: `${(count / maxVm) * 100}%`, background: col, borderRadius: 999, transition: "width 0.5s ease" }} />
+                          </div>
+                          <span style={{ width: 28, textAlign: "right", fontSize: 17, fontWeight: 700, fontFamily: mono, flex: "0 0 auto" }}>{count}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
 
-          <div style={{ marginTop: 22, fontSize: 18, color: "var(--text2)", fontFamily: mono, ...wrap }}>
-            {CLUSTER_LABEL} · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)}
-          </div>
+                {/* Settlement rate */}
+                <div style={card}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                    <span style={cardTitle}>Settlement rate</span>
+                    <span style={{ fontSize: 26, fontWeight: 800, fontFamily: mono, color: "var(--accent)" }}>{settlePct}%</span>
+                  </div>
+                  <div style={{ height: 14, borderRadius: 999, background: "var(--bg3)", overflow: "hidden", marginBottom: 10 }}>
+                    <div style={{ height: "100%", width: `${settlePct}%`, background: "linear-gradient(90deg, #23dcc8, #3aa0ff)", borderRadius: 999, transition: "width 0.5s ease" }} />
+                  </div>
+                  <div style={{ fontSize: 15, color: "var(--text2)" }}>{dash?.settled ?? 0} of {dash?.totalRequests ?? 0} requests threshold-signed by the operator set.</div>
+                </div>
+
+                <div style={{ marginTop: 22, fontSize: 16, color: "var(--text2)", fontFamily: mono, ...wrap }}>
+                  {CLUSTER_LABEL} · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)} · no historical index (live reads only)
+                </div>
+              </>
+            );
+          })()}
         </section>
       )}
 

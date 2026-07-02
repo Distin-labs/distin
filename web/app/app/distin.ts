@@ -92,6 +92,8 @@ export type DashStats = {
   bondedWeight: number;
   frost: number; // FROST (Ed25519) requests
   gg20: number; // GG20 (secp256k1) requests
+  // Requests bucketed by target_vm: [Svm, Evm, Tron, Cosmos, Bitcoin].
+  byVm: [number, number, number, number, number];
 };
 
 // Real, on-chain dashboard numbers. Scans every SigningRequest account (matched
@@ -101,6 +103,7 @@ export async function readDashboard(conn: Connection, proto: ProtocolState): Pro
   const disc = (await sha256("account:SigningRequest")).slice(0, 8);
   const accts = await conn.getProgramAccounts(PROGRAM_ID);
   let settled = 0, frost = 0, gg20 = 0;
+  const byVm: [number, number, number, number, number] = [0, 0, 0, 0, 0];
   for (const { account } of accts) {
     const d = account.data;
     if (d.length < REQ_SIG_OFFSET + 64) continue;
@@ -108,7 +111,9 @@ export async function readDashboard(conn: Connection, proto: ProtocolState): Pro
     for (let i = 0; i < 8; i++) if (d[i] !== disc[i]) { isReq = false; break; }
     if (!isReq) continue;
     const scheme = d[8 + 32 + 32 + 8]; // 0=FROST, 1=GG20
+    const vm = d[8 + 32 + 32 + 8 + 1]; // 0=Svm 1=Evm 2=Tron 3=Cosmos 4=Bitcoin
     if (scheme === 0) frost++; else if (scheme === 1) gg20++;
+    if (vm >= 0 && vm <= 4) byVm[vm]++;
     if (d.subarray(REQ_SIG_OFFSET, REQ_SIG_OFFSET + 64).some((x) => x !== 0)) settled++;
   }
   return {
@@ -118,6 +123,7 @@ export async function readDashboard(conn: Connection, proto: ProtocolState): Pro
     bondedWeight: Number(proto.totalBonded) / 1e9,
     frost,
     gg20,
+    byVm,
   };
 }
 
