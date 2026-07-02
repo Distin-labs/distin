@@ -706,7 +706,7 @@ export default function Home() {
                   honeypot to drain.
                 </p>
                 <p style={{ fontSize: 19, color: "#fff", margin: "0 0 30px", fontWeight: 600, lineHeight: 1.5 }}>
-                  Clone it and an independent verifier accepts the group signature in{" "}
+                  Connect a wallet and post your first signing intent in{" "}
                   <span style={{ color: ACCENT_TEXT }}>under two minutes</span>.
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 18 }}>
@@ -1273,15 +1273,15 @@ export default function Home() {
                 maxWidth: 1300,
               }}
             >
-              Run
+              Sign on
               <br />
-              the tests.
+              any chain.
             </h2>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 40, marginTop: 48 }}>
               <p style={{ fontSize: 21, color: MUTED, margin: 0, maxWidth: 520, lineHeight: 1.55 }}>
-                Clone the repo. cargo test and go test reproduce it in under two minutes: an
-                independent verifier accepting a threshold signature the group key never assembled in
-                one place. The code is the argument.
+                Connect a wallet and post a signing intent. A bonded operator set threshold-signs a
+                native transaction on the chain you choose. No bridge, no wrapped asset, no custodian
+                holding your funds.
               </p>
               <button
                 onClick={connectWallet}
