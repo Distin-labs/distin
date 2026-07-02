@@ -15,17 +15,22 @@ import { buildEthTransfer, ethSighash, assembleSignedTx, broadcastEth } from "./
 
 // Chains map to the program's SignatureScheme / TargetVm enums.
 const CHAINS = [
-  { key: "bitcoin", name: "Bitcoin", curve: "secp256k1", scheme: "GG20 ECDSA", dot: "#f7931a", sample: "bc1qak9zl3xm7v2p0qd8sehua4rk0n6n9d3p2yq7lk", sig: Scheme.Gg20Secp256k1, vm: TargetVm.Bitcoin, chainId: 0n },
-  { key: "ethereum", name: "Ethereum", curve: "secp256k1", scheme: "GG20 ECDSA", dot: "#8aa0e8", sample: "0x9f3aE12bC0d44eF77a1c0b88E2d5F3a91C7d4e02", sig: Scheme.Gg20Secp256k1, vm: TargetVm.Evm, chainId: 1n },
-  { key: "tron", name: "Tron", curve: "secp256k1", scheme: "GG20 ECDSA", dot: "#e0746e", sample: "TQ5n8Wp3kJ2vQ7rL9mXa4Yb6Zc1Df0Eg2H", sig: Scheme.Gg20Secp256k1, vm: TargetVm.Tron, chainId: 0n },
-  { key: "cosmos", name: "Cosmos", curve: "secp256k1", scheme: "GG20 ECDSA", dot: "#aab0cc", sample: "cosmos1p8a3v9k2m7q0xs4r6n1d5e8y2t7w3l9c0z4b", sig: Scheme.Gg20Secp256k1, vm: TargetVm.Cosmos, chainId: 0n },
-  { key: "aptos", name: "Aptos", curve: "ed25519", scheme: "FROST", dot: "#5fd8c4", sample: "0x4a7c2e91d0f3b6a8c5e2147d9f0b3a6c8e1d4f7a0b2c5e8d1f4a7c0e3b6d9f2a", sig: Scheme.FrostEd25519, vm: TargetVm.Svm, chainId: 0n },
+  { key: "bitcoin", name: "Bitcoin", curve: "secp256k1", scheme: "GG20 ECDSA", dot: "#f7931a", logo: "/chains/bitcoin.png", sample: "bc1qak9zl3xm7v2p0qd8sehua4rk0n6n9d3p2yq7lk", sig: Scheme.Gg20Secp256k1, vm: TargetVm.Bitcoin, chainId: 0n },
+  { key: "ethereum", name: "Ethereum", curve: "secp256k1", scheme: "GG20 ECDSA", dot: "#8aa0e8", logo: "/chains/ethereum.png", sample: "0x9f3aE12bC0d44eF77a1c0b88E2d5F3a91C7d4e02", sig: Scheme.Gg20Secp256k1, vm: TargetVm.Evm, chainId: 1n },
+  { key: "tron", name: "Tron", curve: "secp256k1", scheme: "GG20 ECDSA", dot: "#e0746e", logo: "/chains/tron.png", sample: "TQ5n8Wp3kJ2vQ7rL9mXa4Yb6Zc1Df0Eg2H", sig: Scheme.Gg20Secp256k1, vm: TargetVm.Tron, chainId: 0n },
+  { key: "cosmos", name: "Cosmos", curve: "secp256k1", scheme: "GG20 ECDSA", dot: "#aab0cc", logo: "/chains/cosmos.png", sample: "cosmos1p8a3v9k2m7q0xs4r6n1d5e8y2t7w3l9c0z4b", sig: Scheme.Gg20Secp256k1, vm: TargetVm.Cosmos, chainId: 0n },
+  { key: "aptos", name: "Aptos", curve: "ed25519", scheme: "FROST", dot: "#5fd8c4", logo: "/chains/aptos.png", sample: "0x4a7c2e91d0f3b6a8c5e2147d9f0b3a6c8e1d4f7a0b2c5e8d1f4a7c0e3b6d9f2a", sig: Scheme.FrostEd25519, vm: TargetVm.Svm, chainId: 0n },
 ];
+
+// Chain logo as a round <img>, replacing the old colored dot.
+const chainImg = (src: string, size = 20) => (
+  <img src={src} alt="" width={size} height={size} style={{ width: size, height: size, borderRadius: 999, flex: "0 0 auto", objectFit: "cover" }} />
+);
 
 const mid = (s: string, l = 8, r = 6) => (s.length <= l + r + 1 ? s : `${s.slice(0, l)}…${s.slice(-r)}`);
 
 type Row =
-  | { kind: "intent"; id: string; chain: string; dot: string; dest: string; amt: string; sig: string; request: string; threshSig: string | null; ethRaw?: string | null; ethHash?: string; ethSent?: string; ethErr?: string }
+  | { kind: "intent"; id: string; chain: string; logo: string; dest: string; amt: string; sig: string; request: string; threshSig: string | null; ethRaw?: string | null; ethHash?: string; ethSent?: string; ethErr?: string }
   | { kind: "error"; id: string; msg: string };
 
 const PALETTE: React.CSSProperties = {
@@ -162,7 +167,7 @@ export default function Page() {
         }
       );
       const rowId = nextId();
-      pushRow({ kind: "intent", id: rowId, chain: c.name, dot: c.dot, dest, amt, sig: signature, request: request.toString(), threshSig: null, ethRaw: isEth ? null : undefined });
+      pushRow({ kind: "intent", id: rowId, chain: c.name, logo: c.logo, dest, amt, sig: signature, request: request.toString(), threshSig: null, ethRaw: isEth ? null : undefined });
       setIntents((v) => v + 1);
       setProto(await readProtocol(conn));
       // Poll for the operator set's threshold signature, then reveal it — and for
@@ -407,8 +412,8 @@ export default function Page() {
           </div>
           {(() => {
             const VM = [
-              { name: "Aptos", dot: "#5fd8c4" }, { name: "Ethereum", dot: "#8aa0e8" }, { name: "Tron", dot: "#e0746e" },
-              { name: "Cosmos", dot: "#aab0cc" }, { name: "Bitcoin", dot: "#f7931a" },
+              { name: "Aptos", logo: "/chains/aptos.png" }, { name: "Ethereum", logo: "/chains/ethereum.png" }, { name: "Tron", logo: "/chains/tron.png" },
+              { name: "Cosmos", logo: "/chains/cosmos.png" }, { name: "Bitcoin", logo: "/chains/bitcoin.png" },
             ];
             const empty = (msg: string) => (
               <div style={{ border: "1px dashed var(--border)", background: "var(--bg2)", borderRadius: 14, padding: "40px 20px", fontSize: 18, color: "var(--text2)", textAlign: "center" }}>{msg}</div>
@@ -419,10 +424,10 @@ export default function Page() {
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {activity.map((a) => {
-                  const c = VM[a.vm] ?? { name: `vm${a.vm}`, dot: "#888" };
+                  const c = VM[a.vm] ?? { name: `vm${a.vm}`, logo: "" };
                   return (
                     <div key={a.request} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-                      <span style={{ width: 11, height: 11, borderRadius: 999, background: c.dot, flex: "0 0 auto" }} />
+                      {c.logo ? chainImg(c.logo, 22) : <span style={{ width: 11, height: 11, borderRadius: 999, background: "#888", flex: "0 0 auto" }} />}
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontSize: 18, fontWeight: 700 }}>{c.name} <span style={{ fontSize: 15, color: "var(--text2)", fontWeight: 500 }}>· #{a.requestId} · {a.scheme === 0 ? "FROST" : "GG20"}</span></div>
                         <div style={{ fontSize: 15, color: "var(--text2)", fontFamily: mono, ...wrap }}>{a.signatureHex ? `sig ${mid(a.signatureHex, 12, 10)}` : "awaiting operator threshold signature…"}</div>
@@ -475,7 +480,7 @@ export default function Page() {
                 onClick={() => setChainMenu((v) => !v)}
                 style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 999, padding: "8px 12px", cursor: "pointer", fontFamily: "inherit" }}
               >
-                <span style={{ width: 12, height: 12, borderRadius: 999, background: chain.dot, flex: "0 0 auto" }} />
+                {chainImg(chain.logo, 22)}
                 <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{chain.name}</span>
                 <ChevronDown size={17} color="var(--text2)" style={{ transform: chainMenu ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
               </button>
@@ -489,7 +494,7 @@ export default function Page() {
                     onClick={() => { setSelected(i); setChainMenu(false); }}
                     style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: i === selected ? "var(--accent-soft)" : "transparent", border: "none", borderRadius: 10, padding: "10px 12px", cursor: "pointer", fontFamily: "inherit", color: "var(--text)" }}
                   >
-                    <span style={{ width: 11, height: 11, borderRadius: 999, background: c.dot, flex: "0 0 auto" }} />
+                    {chainImg(c.logo, 22)}
                     <span style={{ fontSize: 17, fontWeight: 600 }}>{c.name}</span>
                     <span style={{ marginLeft: "auto", fontSize: 14, color: "var(--text2)" }}>{c.curve}</span>
                   </button>
@@ -509,7 +514,7 @@ export default function Page() {
           <div style={{ ...sendBox, marginBottom: 12 }}>
             <div style={boxHead}>
               <span>Destination on {chain.name}</span>
-              <span style={{ width: 9, height: 9, borderRadius: 999, background: chain.dot, display: "inline-block" }} />
+              {chainImg(chain.logo, 18)}
             </div>
             <input
               value={destination}
@@ -585,7 +590,7 @@ export default function Page() {
                     <div style={rowHead}>
                       <ArrowDownRight size={18} color="var(--accent)" style={{ flex: "0 0 auto" }} />
                       <span style={{ ...wrap }}>Intent posted</span>
-                      <span style={{ width: 9, height: 9, borderRadius: 999, background: r.dot, display: "inline-block", flex: "0 0 auto" }} />
+                      {chainImg(r.logo, 18)}
                       <span style={{ color: "var(--text2)", fontWeight: 600, ...wrap }}>{r.chain}</span>
                       <Check size={16} color="var(--accent)" style={{ flex: "0 0 auto" }} />
                     </div>
