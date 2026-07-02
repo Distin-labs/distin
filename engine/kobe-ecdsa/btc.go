@@ -267,3 +267,89 @@ func VerifyBtcDERSignature(der, sighash []byte, pub *ecdsa.PublicKey) (bool, err
 	}
 	return parsed.Verify(sighash, btcPub), nil
 }
+
+// P2WPKHScriptForPubkey returns the scriptPubKey (0x00 0x14 || HASH160(pubkey))
+// that locks funds to the given key's native-segwit address — used for the
+// change output that pays value back to the group's own address.
+func P2WPKHScriptForPubkey(pub *ecdsa.PublicKey) []byte {
+	return append([]byte{0x00, 0x14}, hash160(compressedPubkey(pub))...)
+}
+
+// DecodeBech32P2WPKH parses a native-segwit (bech32, "bc1..."/"tb1...") address
+// into its scriptPubKey (0x00 0x14 || 20-byte program). Only witness v0 P2WPKH
+// (20-byte program) is accepted — the address type this signer produces and pays.
+func DecodeBech32P2WPKH(addr string) ([]byte, error) {
+	_, data, err := bech32.Decode(addr)
+	if err != nil {
+		return nil, fmt.Errorf("bech32 decode: %w", err)
+	}
+	if len(data) == 0 || data[0] != 0x00 {
+		return nil, fmt.Errorf("not a witness-v0 address")
+	}
+	prog, err := bech32.ConvertBits(data[1:], 5, 8, false)
+	if err != nil {
+		return nil, fmt.Errorf("convert program from 5-bit: %w", err)
+	}
+	if len(prog) != 20 {
+		return nil, fmt.Errorf("expected 20-byte P2WPKH program, got %d", len(prog))
+	}
+	return append([]byte{0x00, 0x14}, prog...), nil
+}
+
+// SerializeSignedP2WPKHTx assembles the complete, broadcast-ready segwit
+// transaction: BIP-141 marker/flag, the inputs (empty scriptSig), the outputs,
+// and one witness stack [DER(r,s)||SIGHASH_ALL, compressed-pubkey] per input,
+// all signed by the same key. Returns the raw wire bytes to broadcast and the
+// txid (internal byte order; reverse for the explorer display form).
+func SerializeSignedP2WPKHTx(
+	version uint32,
+	inputs []BtcTxInput,
+	outputs []BtcTxOutput,
+	locktime uint32,
+	derSigs [][]byte,
+	compressedPub []byte,
+) ([]byte, [32]byte, error) {
+	if len(derSigs) != len(inputs) {
+		return nil, [32]byte{}, fmt.Errorf("need one signature per input (%d sigs, %d inputs)", len(derSigs), len(inputs))
+	}
+	le32 := func(v uint32) []byte { b := make([]byte, 4); binary.LittleEndian.PutUint32(b, v); return b }
+	le64 := func(v uint64) []byte { b := make([]byte, 8); binary.LittleEndian.PutUint64(b, v); return b }
+
+	writeBody := func(w *bytes.Buffer) {
+		w.Write(varint(uint64(len(inputs))))
+		for _, in := range inputs {
+			w.Write(in.PrevTxID[:])
+			w.Write(le32(in.Vout))
+			w.Write(varint(0)) // empty scriptSig (native segwit)
+			w.Write(le32(in.Sequence))
+		}
+		w.Write(varint(uint64(len(outputs))))
+		for _, out := range outputs {
+			w.Write(le64(out.ValueSat))
+			w.Write(varint(uint64(len(out.ScriptPubKey))))
+			w.Write(out.ScriptPubKey)
+		}
+	}
+
+	// Legacy (no marker/flag/witness) serialization defines the txid.
+	var legacy bytes.Buffer
+	legacy.Write(le32(version))
+	writeBody(&legacy)
+	legacy.Write(le32(locktime))
+	txid := doubleSHA256(legacy.Bytes())
+
+	// Full segwit serialization is what gets broadcast.
+	var w bytes.Buffer
+	w.Write(le32(version))
+	w.Write([]byte{0x00, 0x01}) // segwit marker + flag
+	writeBody(&w)
+	for i := range inputs {
+		w.Write(varint(2)) // two witness items
+		w.Write(varint(uint64(len(derSigs[i]))))
+		w.Write(derSigs[i])
+		w.Write(varint(uint64(len(compressedPub))))
+		w.Write(compressedPub)
+	}
+	w.Write(le32(locktime))
+	return w.Bytes(), txid, nil
+}
