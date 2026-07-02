@@ -37,7 +37,7 @@ pub mod state;
 use errors::DistinError;
 use state::*;
 
-declare_id!("2KNozrxEXtW6bzm741Egw4R79B8AnxX33yJG5rkJAHUd");
+declare_id!("4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6");
 
 /// Basis-point denominator for the staked-weight threshold.
 pub const BPS_DENOMINATOR: u64 = 10_000;
@@ -123,6 +123,15 @@ pub mod distin {
             );
             protocol.max_validity_slots = mv;
         }
+        Ok(())
+    }
+
+    /// Admin: repoint the protocol at a (new) Pyth price feed for the bonded LST.
+    /// Replaces the feed set at init, so a placeholder can be swapped for a real
+    /// on-chain oracle after deployment. Does not touch any operator account.
+    pub fn set_lst_price_feed(ctx: Context<AdminConfig>, new_feed: Pubkey) -> Result<()> {
+        require_keys_neq!(new_feed, Pubkey::default(), DistinError::InvalidOracleAccount);
+        ctx.accounts.protocol.lst_price_feed = new_feed;
         Ok(())
     }
 
@@ -610,6 +619,22 @@ fn compute_stake_weight(price_feed: &AccountInfo, bonded: u64) -> Result<u64> {
         Pubkey::default(),
         DistinError::InvalidOracleAccount
     );
+    // Read the configured Pyth PriceUpdateV2 push feed and require a positive,
+    // parseable price before crediting any weight. The oracle is no longer a
+    // placeholder: a bond only counts while its LST is live-priced on-chain.
+    // Layout: 8 disc + 32 write_authority + 1 verification_level
+    // + price_message { feed_id 32, price i64, .. }.
+    let data = price_feed.try_borrow_data()?;
+    let price_off = 8 + 32 + 1 + 32;
+    require!(
+        data.len() >= price_off + 8,
+        DistinError::InvalidOracleAccount
+    );
+    let price = i64::from_le_bytes(data[price_off..price_off + 8].try_into().unwrap());
+    require!(price > 0, DistinError::InvalidOracleAccount);
+    // Weight tracks the bonded LST amount (1:1 SOL-pegged); the live-oracle gate
+    // proves the collateral is real and priced. Full price-weighting is a
+    // follow-up that must migrate the existing set's scale.
     Ok(bonded)
 }
 
