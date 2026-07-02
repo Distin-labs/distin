@@ -134,6 +134,8 @@ export type ActivityItem = {
   vm: number; // 0=Svm 1=Evm 2=Tron 3=Cosmos 4=Bitcoin
   scheme: number; // 0=FROST 1=GG20
   signed: boolean;
+  // Unsigned past its expiry slot — the operator set will no longer pick it up.
+  expired: boolean;
   signatureHex: string | null;
 };
 
@@ -142,7 +144,7 @@ export type ActivityItem = {
 export async function readMyActivity(conn: Connection, wallet: PublicKey): Promise<ActivityItem[]> {
   const disc = (await sha256("account:SigningRequest")).slice(0, 8);
   const w = wallet.toBytes();
-  const accts = await conn.getProgramAccounts(PROGRAM_ID);
+  const [accts, slot] = await Promise.all([conn.getProgramAccounts(PROGRAM_ID), conn.getSlot()]);
   const items: ActivityItem[] = [];
   for (const { pubkey, account } of accts) {
     const d = account.data;
@@ -157,9 +159,12 @@ export async function readMyActivity(conn: Connection, wallet: PublicKey): Promi
     const requestId = Number(dv.getBigUint64(8 + 32 + 32, true));
     const scheme = d[8 + 32 + 32 + 8];
     const vm = d[8 + 32 + 32 + 8 + 1];
+    // expiry_slot sits right before the status byte.
+    const expirySlot = dv.getBigUint64(REQ_STATUS_OFFSET - 8, true);
     const sig = d.subarray(REQ_SIG_OFFSET, REQ_SIG_OFFSET + 64);
     const signed = sig.some((x) => x !== 0);
-    items.push({ request: pubkey.toBase58(), requestId, vm, scheme, signed, signatureHex: signed ? hex(sig) : null });
+    const expired = !signed && BigInt(slot) > expirySlot;
+    items.push({ request: pubkey.toBase58(), requestId, vm, scheme, signed, expired, signatureHex: signed ? hex(sig) : null });
   }
   items.sort((a, b) => b.requestId - a.requestId);
   return items;
