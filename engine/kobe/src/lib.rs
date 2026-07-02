@@ -153,6 +153,51 @@ impl KeySet {
         })
     }
 
+    /// Threshold-sign an arbitrary-length message. FROST Ed25519 signs the raw
+    /// bytes (as Aptos/Solana ed25519 verification expects) rather than a
+    /// pre-hashed 32-byte digest, so this is what a real chain signing message
+    /// needs. Returns the 64-byte group signature; the group key is never
+    /// assembled in one place.
+    pub fn threshold_sign_bytes(
+        &self,
+        signing_indices: &[u16],
+        message: &[u8],
+    ) -> Result<[u8; 64], frost::Error> {
+        assert!(
+            signing_indices.len() >= self.min_signers as usize,
+            "quorum of {} given, threshold is {}",
+            signing_indices.len(),
+            self.min_signers
+        );
+        let mut rng = OsRng;
+        let quorum: Vec<Identifier> = signing_indices
+            .iter()
+            .map(|i| Identifier::try_from(*i))
+            .collect::<Result<_, _>>()?;
+
+        let mut nonces_map: BTreeMap<Identifier, round1::SigningNonces> = BTreeMap::new();
+        let mut commitments_map: BTreeMap<Identifier, round1::SigningCommitments> = BTreeMap::new();
+        for id in &quorum {
+            let (nonces, commitments) = round1::commit(self.key_packages[id].signing_share(), &mut rng);
+            nonces_map.insert(*id, nonces);
+            commitments_map.insert(*id, commitments);
+        }
+
+        let signing_package = SigningPackage::new(commitments_map, message);
+        let mut signature_shares: BTreeMap<Identifier, round2::SignatureShare> = BTreeMap::new();
+        for id in &quorum {
+            let share = round2::sign(&signing_package, &nonces_map[id], &self.key_packages[id])?;
+            signature_shares.insert(*id, share);
+        }
+
+        let group_signature: Signature =
+            frost::aggregate(&signing_package, &signature_shares, &self.pubkey_package)?;
+        let sig_bytes = group_signature.serialize()?;
+        let mut signature = [0u8; 64];
+        signature.copy_from_slice(&sig_bytes);
+        Ok(signature)
+    }
+
     pub fn max_signers(&self) -> u16 {
         self.max_signers
     }

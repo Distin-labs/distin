@@ -58,3 +58,8 @@ path = "src/net_demo.rs"
 [[bin]]
 name = "signerd"
 path = "src/signerd.rs"
+
+# Aptos (FROST Ed25519) real-transaction vertical: sign a real BCS RawTransaction.
+[[bin]]
+name = "aptos-tx"
+path = "src/aptos_tx.rs"
