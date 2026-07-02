@@ -226,7 +226,7 @@ export default function Page() {
   };
 
   return (
-    <main style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", overflowX: "hidden", display: "flex", ...PALETTE }}>
+    <main style={{ minHeight: "100vh", width: "100%", background: "var(--bg)", color: "var(--text)", overflowX: "hidden", display: "flex", fontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif", ...PALETTE }}>
       <aside className="sidebar" style={{ width: 236, flex: "0 0 236px", boxSizing: "border-box", borderRight: "1px solid var(--border)", background: "var(--bg2)", padding: "20px 14px", display: "flex", flexDirection: "column", gap: 4, position: "sticky", top: 0, height: "100vh" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px 20px" }}>
           <img src="/logo.png" alt="Distin" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 10, objectFit: "cover" }} />
@@ -312,7 +312,11 @@ export default function Page() {
       )}
 
       {view === "sign" && (
-      <section style={{ maxWidth: 560, margin: "0 auto", padding: "40px 20px 80px", boxSizing: "border-box" }}>
+      <section style={{ maxWidth: 560, margin: "0 auto", padding: "38px 20px 80px", boxSizing: "border-box" }}>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>Sign</div>
+          <div style={{ fontSize: 18, color: "var(--text2)", marginTop: 4 }}>Threshold-sign a native asset on any chain.</div>
+        </div>
         <div
           style={{
             background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 18,
@@ -422,22 +426,8 @@ export default function Page() {
           </button>
         </div>
 
-        {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 24 }}>
-          {[
-            { label: "Intents posted", value: intents },
-            { label: "Active operators", value: proto?.operatorCount ?? 0 },
-            { label: "On-chain nonce", value: proto ? Number(proto.requestNonce) : 0 },
-          ].map((s) => (
-            <div key={s.label} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: "16px 14px", minWidth: 0, textAlign: "center" }}>
-              <div style={{ fontSize: 28, fontWeight: 800, fontFamily: mono, color: "var(--text)" }}>{s.value}</div>
-              <div style={{ fontSize: 18, color: "var(--text2)", marginTop: 4 }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-
         {/* Feed */}
-        <div id="feed" style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 28, marginBottom: 12, scrollMarginTop: 20 }}>
+        <div id="feed" style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 30, marginBottom: 12, scrollMarginTop: 20 }}>
           <Radio size={18} color="var(--accent)" style={{ flex: "0 0 auto" }} />
           <span style={{ fontSize: 19, fontWeight: 700 }}>Signing intents</span>
         </div>
