@@ -208,8 +208,8 @@ export default function Page() {
   const rowMeta: React.CSSProperties = { fontSize: 18, color: "var(--text2)", fontFamily: mono, ...wrap };
 
   // THORChain-style stacked boxes with a circular divider.
-  const sendBox: React.CSSProperties = { background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 16, padding: "15px 16px", boxSizing: "border-box" };
-  const boxHead: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 17, color: "var(--text2)", marginBottom: 12 };
+  const sendBox: React.CSSProperties = { background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 14, padding: "12px 15px", boxSizing: "border-box" };
+  const boxHead: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 15, color: "var(--text2)", marginBottom: 9 };
   const bareInput: React.CSSProperties = { width: "100%", boxSizing: "border-box", background: "transparent", border: "none", color: "var(--text)", fontFamily: mono, padding: 0, outline: "none" };
 
   const navItem = (icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void, href?: string) => {
@@ -389,17 +389,17 @@ export default function Page() {
       )}
 
       {view === "sign" && (
-      <section style={{ maxWidth: 1060, margin: "0 auto", padding: "38px 22px 80px", boxSizing: "border-box" }}>
-        <div style={{ marginBottom: 22 }}>
-          <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>Sign</div>
-          <div style={{ fontSize: 18, color: "var(--text2)", marginTop: 4 }}>Threshold-sign a native asset on any chain.</div>
+      <section style={{ maxWidth: 1060, margin: "0 auto", padding: "24px 22px 40px", boxSizing: "border-box" }}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em" }}>Sign</div>
+          <div style={{ fontSize: 17, color: "var(--text2)", marginTop: 3 }}>Threshold-sign a native asset on any chain.</div>
         </div>
         <div className="signgrid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 500px) minmax(0, 1fr)", gap: 22, alignItems: "start" }}>
         <div style={{ minWidth: 0 }}>
         <div
           style={{
             background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 18,
-            padding: 24, boxSizing: "border-box",
+            padding: 18, boxSizing: "border-box",
             boxShadow: "0 1px 0 rgba(255,255,255,0.02) inset, 0 24px 60px -40px rgba(0,0,0,0.9)",
           }}
         >
@@ -407,9 +407,9 @@ export default function Page() {
           <div style={sendBox}>
             <div style={boxHead}>
               <span>You send</span>
-              <span style={{ fontSize: 16 }}>native · no wrapping</span>
+              <span>native · no wrapping</span>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
               {CHAINS.map((c, i) => {
                 const on = i === selected;
                 return (
@@ -417,14 +417,14 @@ export default function Page() {
                     key={c.key}
                     onClick={() => setSelected(i)}
                     style={{
-                      display: "flex", alignItems: "center", gap: 7,
+                      display: "flex", alignItems: "center", gap: 6,
                       background: on ? "var(--accent-soft)" : "var(--bg2)",
                       border: `1px solid ${on ? "var(--accent-border)" : "var(--border)"}`,
                       color: on ? "var(--text)" : "var(--text2)",
-                      fontSize: 17, fontWeight: 600, padding: "8px 12px", borderRadius: 999, cursor: "pointer", transition: "all 0.16s ease",
+                      fontSize: 15, fontWeight: 600, padding: "6px 10px", borderRadius: 999, cursor: "pointer", transition: "all 0.16s ease",
                     }}
                   >
-                    <span style={{ width: 9, height: 9, borderRadius: 999, background: c.dot, display: "inline-block", flex: "0 0 auto" }} />
+                    <span style={{ width: 8, height: 8, borderRadius: 999, background: c.dot, display: "inline-block", flex: "0 0 auto" }} />
                     {c.name}
                   </button>
                 );
@@ -435,20 +435,19 @@ export default function Page() {
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
               inputMode="decimal"
-              style={{ ...bareInput, fontSize: 34, fontWeight: 700 }}
+              style={{ ...bareInput, fontSize: 30, fontWeight: 700 }}
             />
-            <div style={{ fontSize: 16, color: "var(--text2)", marginTop: 4 }}>{chain.name} · {chain.scheme}</div>
           </div>
 
           {/* divider */}
-          <div style={{ display: "flex", justifyContent: "center", margin: "-13px 0", position: "relative", zIndex: 2 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 999, background: "var(--accent)", border: "4px solid var(--bg2)", display: "grid", placeItems: "center" }}>
-              <ArrowDown size={19} color="#07100e" strokeWidth={2.5} />
+          <div style={{ display: "flex", justifyContent: "center", margin: "-11px 0", position: "relative", zIndex: 2 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 999, background: "var(--accent)", border: "4px solid var(--bg2)", display: "grid", placeItems: "center" }}>
+              <ArrowDown size={18} color="#07100e" strokeWidth={2.5} />
             </div>
           </div>
 
           {/* Destination */}
-          <div style={{ ...sendBox, marginBottom: 16 }}>
+          <div style={{ ...sendBox, marginBottom: 12 }}>
             <div style={boxHead}>
               <span>Destination on {chain.name}</span>
               <span style={{ width: 9, height: 9, borderRadius: 999, background: chain.dot, display: "inline-block" }} />
@@ -462,15 +461,14 @@ export default function Page() {
             />
           </div>
 
-          {/* THORSwap-style details table */}
-          <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: "13px 15px", marginBottom: 16, display: "flex", flexDirection: "column", gap: 9 }}>
+          {/* details table */}
+          <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: "11px 14px", marginBottom: 14, display: "flex", flexDirection: "column", gap: 6 }}>
             {([
               ["Signed by", `${proto?.operatorCount ?? 0} bonded operators`],
               ["Scheme", `${chain.scheme} · ${chain.curve}`],
               ["Settles as", `native ${chain.name}, no wrapping`],
-              ["Secured by", "slashable bond, coordinated on Solana"],
             ] as [string, string][]).map(([k, v]) => (
-              <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 14, fontSize: 17 }}>
+              <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 14, fontSize: 16 }}>
                 <span style={{ color: "var(--text2)", flex: "0 0 auto" }}>{k}</span>
                 <span style={{ color: "var(--text)", fontFamily: mono, textAlign: "right", ...wrap }}>{v}</span>
               </div>
@@ -494,7 +492,7 @@ export default function Page() {
               width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
               background: running ? "var(--bg3)" : "linear-gradient(90deg, #23dcc8 0%, #3aa0ff 100%)",
               color: running ? "var(--text2)" : "#07100e",
-              border: "none", fontSize: 20, fontWeight: 800, padding: "16px 18px", borderRadius: 14,
+              border: "none", fontSize: 19, fontWeight: 800, padding: "14px 18px", borderRadius: 14,
               cursor: running ? "default" : "pointer", boxSizing: "border-box", transition: "all 0.18s ease",
             }}
           >
