@@ -50,8 +50,8 @@ const getProvider = (): Provider | undefined =>
   typeof window !== "undefined" ? (window as any)?.solana : undefined;
 
 // Pre-launch gate: the full app stays hidden until launch. Flip on by setting
-// NEXT_PUBLIC_LAUNCHED=1 at deploy time; until then /app is a wallet-login holding page.
-const LAUNCHED = process.env.NEXT_PUBLIC_LAUNCHED === "1";
+// Live by default; set NEXT_PUBLIC_LAUNCHED=0 to fall back to a holding page.
+const LAUNCHED = process.env.NEXT_PUBLIC_LAUNCHED !== "0";
 
 export default function Page() {
   const [selected, setSelected] = useState(0);
