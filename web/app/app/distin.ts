@@ -162,19 +162,34 @@ export async function buildCreateRequestIx(
 }
 
 // Sign + send via the injected wallet, then confirm. Returns the tx signature.
+// The request PDA is derived from the protocol's global nonce; if another
+// request lands in the window between build and send, that nonce goes stale and
+// the tx (and its wallet-side simulation) fails. So we build against the very
+// latest nonce and retry once with a fresh one, which clears any such race.
 export async function sendCreateRequest(
   conn: Connection,
   wallet: { publicKey: PublicKey; signTransaction: (t: Transaction) => Promise<Transaction> },
   args: IntentArgs
 ): Promise<{ signature: string; request: PublicKey }> {
-  const { ix, request } = await buildCreateRequestIx(conn, wallet.publicKey, args);
-  const tx = new Transaction().add(ix);
-  tx.feePayer = wallet.publicKey;
-  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
-  tx.recentBlockhash = blockhash;
-
-  const signed = await wallet.signTransaction(tx);
-  const signature = await conn.sendRawTransaction(signed.serialize());
-  await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
-  return { signature, request };
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const { ix, request } = await buildCreateRequestIx(conn, wallet.publicKey, args);
+    const tx = new Transaction().add(ix);
+    tx.feePayer = wallet.publicKey;
+    const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
+    tx.recentBlockhash = blockhash;
+    try {
+      const signed = await wallet.signTransaction(tx);
+      const signature = await conn.sendRawTransaction(signed.serialize());
+      await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+      return { signature, request };
+    } catch (e) {
+      lastErr = e;
+      // Only retry a stale-nonce collision (request PDA already in use); a user
+      // rejection or any other error should surface immediately.
+      const msg = String((e as any)?.message ?? e);
+      if (!/already in use|custom program error|0x0|simulat/i.test(msg)) throw e;
+    }
+  }
+  throw lastErr;
 }
