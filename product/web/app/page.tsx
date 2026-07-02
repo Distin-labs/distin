@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { Layers, Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDownRight, AlertTriangle } from "lucide-react";
+import { Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDown, ArrowDownRight, AlertTriangle } from "lucide-react";
 import {
   RPC_URL, CLUSTER_LABEL, PROGRAM_ID,
   Scheme, TargetVm, readProtocol, readRequest, sendCreateRequest, type ProtocolState,
@@ -27,15 +27,15 @@ type Row =
   | { kind: "error"; id: string; msg: string };
 
 const PALETTE: React.CSSProperties = {
-  ["--bg" as any]: "#0d0f13",
-  ["--bg2" as any]: "#161a20",
-  ["--bg3" as any]: "#1f242c",
-  ["--border" as any]: "#2c333d",
-  ["--text" as any]: "#f3f5f9",
-  ["--text2" as any]: "#c2cad6",
-  ["--accent" as any]: "#84b4ff",
-  ["--accent-soft" as any]: "rgba(132,180,255,0.14)",
-  ["--accent-border" as any]: "rgba(132,180,255,0.42)",
+  ["--bg" as any]: "#0a0d10",
+  ["--bg2" as any]: "#111519",
+  ["--bg3" as any]: "#181d23",
+  ["--border" as any]: "#242b33",
+  ["--text" as any]: "#eef3f6",
+  ["--text2" as any]: "#93a1ac",
+  ["--accent" as any]: "#23dcc8",
+  ["--accent-soft" as any]: "rgba(35,220,200,0.13)",
+  ["--accent-border" as any]: "rgba(35,220,200,0.42)",
   ["--warn" as any]: "#f0a35e",
   ["--warn-soft" as any]: "rgba(240,163,94,0.12)",
 };
@@ -200,6 +200,11 @@ export default function Page() {
   };
   const rowMeta: React.CSSProperties = { fontSize: 18, color: "var(--text2)", fontFamily: mono, ...wrap };
 
+  // THORChain-style stacked boxes with a circular divider.
+  const sendBox: React.CSSProperties = { background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 16, padding: "15px 16px", boxSizing: "border-box" };
+  const boxHead: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 17, color: "var(--text2)", marginBottom: 12 };
+  const bareInput: React.CSSProperties = { width: "100%", boxSizing: "border-box", background: "transparent", border: "none", color: "var(--text)", fontFamily: mono, padding: 0, outline: "none" };
+
   return (
     <main style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", overflowX: "hidden", ...PALETTE }}>
       <header
@@ -238,52 +243,66 @@ export default function Page() {
             boxShadow: "0 1px 0 rgba(255,255,255,0.02) inset, 0 24px 60px -40px rgba(0,0,0,0.9)",
           }}
         >
-          <div style={{ fontSize: 19, color: "var(--text2)", marginBottom: 18, lineHeight: 1.5 }}>
-            One Solana account threshold-signs a native asset on any chain. No bridge, no wrapped IOU.
+          {/* You send */}
+          <div style={sendBox}>
+            <div style={boxHead}>
+              <span>You send</span>
+              <span style={{ fontSize: 16 }}>native · no wrapping</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+              {CHAINS.map((c, i) => {
+                const on = i === selected;
+                return (
+                  <button
+                    key={c.key}
+                    onClick={() => setSelected(i)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 7,
+                      background: on ? "var(--accent-soft)" : "var(--bg2)",
+                      border: `1px solid ${on ? "var(--accent-border)" : "var(--border)"}`,
+                      color: on ? "var(--text)" : "var(--text2)",
+                      fontSize: 17, fontWeight: 600, padding: "8px 12px", borderRadius: 999, cursor: "pointer", transition: "all 0.16s ease",
+                    }}
+                  >
+                    <span style={{ width: 9, height: 9, borderRadius: 999, background: c.dot, display: "inline-block", flex: "0 0 auto" }} />
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              inputMode="decimal"
+              style={{ ...bareInput, fontSize: 34, fontWeight: 700 }}
+            />
+            <div style={{ fontSize: 16, color: "var(--text2)", marginTop: 4 }}>{chain.name} · {chain.scheme}</div>
           </div>
 
-          {/* Chain pills */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 9, marginBottom: 20 }}>
-            {CHAINS.map((c, i) => {
-              const on = i === selected;
-              return (
-                <button
-                  key={c.key}
-                  onClick={() => setSelected(i)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    background: on ? "var(--accent-soft)" : "var(--bg3)",
-                    border: `1px solid ${on ? "var(--accent-border)" : "var(--border)"}`,
-                    color: on ? "var(--text)" : "var(--text2)",
-                    fontSize: 18, fontWeight: 600, padding: "9px 14px", borderRadius: 999, cursor: "pointer", transition: "all 0.16s ease",
-                  }}
-                >
-                  <span style={{ width: 9, height: 9, borderRadius: 999, background: c.dot, display: "inline-block", flex: "0 0 auto" }} />
-                  {c.name}
-                </button>
-              );
-            })}
+          {/* divider */}
+          <div style={{ display: "flex", justifyContent: "center", margin: "-11px 0", position: "relative", zIndex: 2 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 999, background: "var(--bg2)", border: "1px solid var(--border)", display: "grid", placeItems: "center" }}>
+              <ArrowDown size={18} color="var(--accent)" />
+            </div>
           </div>
 
-          <label style={{ fontSize: 18, color: "var(--text2)", display: "block", marginBottom: 8 }}>Destination address</label>
-          <input
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            placeholder={chain.sample}
-            spellCheck={false}
-            style={{ marginBottom: 16, width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text)", fontSize: 18, fontFamily: mono, padding: "12px 14px", outline: "none" }}
-          />
+          {/* Destination */}
+          <div style={{ ...sendBox, marginBottom: 16 }}>
+            <div style={boxHead}>
+              <span>Destination on {chain.name}</span>
+              <span style={{ width: 9, height: 9, borderRadius: 999, background: chain.dot, display: "inline-block" }} />
+            </div>
+            <input
+              value={destination}
+              onChange={(e) => setDestination(e.target.value)}
+              placeholder={chain.sample}
+              spellCheck={false}
+              style={{ ...bareInput, fontSize: 18 }}
+            />
+          </div>
 
-          <label style={{ fontSize: 18, color: "var(--text2)", display: "block", marginBottom: 8 }}>Amount ({chain.name})</label>
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.50"
-            inputMode="decimal"
-            style={{ marginBottom: 16, width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text)", fontSize: 18, fontFamily: mono, padding: "12px 14px", outline: "none" }}
-          />
-
-          <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 18, color: "var(--text2)", fontFamily: mono, background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 18, color: "var(--text2)", fontFamily: mono, padding: "4px 4px", marginBottom: 16 }}>
             <ShieldCheck size={18} color="var(--accent)" style={{ flex: "0 0 auto" }} />
             <span style={{ ...wrap }}>{preview}</span>
           </div>
