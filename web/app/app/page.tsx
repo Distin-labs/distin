@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { Layers, Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDownRight, AlertTriangle } from "lucide-react";
+import { Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDownRight, AlertTriangle } from "lucide-react";
 import {
   RPC_URL, CLUSTER_LABEL, PROGRAM_ID,
   Scheme, TargetVm, readProtocol, readRequest, sendCreateRequest, type ProtocolState,
@@ -170,9 +170,7 @@ export default function Page() {
       <main style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", display: "grid", placeItems: "center", padding: 24, ...PALETTE }}>
         <div style={{ textAlign: "center", maxWidth: 460 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", display: "grid", placeItems: "center" }}>
-              <Layers size={24} color="var(--accent)" />
-            </div>
+            <img src="/logo-mark.png" alt="Distin" width={44} height={44} style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover" }} />
             <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.01em" }}>Distin</span>
           </div>
           <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 12px", letterSpacing: "-0.02em" }}>Launching soon</h1>
@@ -220,9 +218,7 @@ export default function Page() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          <div style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 12, background: "var(--accent-soft)", border: "1px solid var(--accent-border)", display: "grid", placeItems: "center" }}>
-            <Layers size={22} color="var(--accent)" />
-          </div>
+          <img src="/logo-mark.png" alt="Distin" width={40} height={40} style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 12, objectFit: "cover" }} />
           <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>Distin</span>
         </div>
 
