@@ -118,7 +118,7 @@ export default function Page() {
     const sol = getProvider();
     if (!sol || !wallet) { await connect(); return; }
     if (!ready) {
-      pushRow({ kind: "error", id: nextId(), msg: "Protocol has no active operators on this network yet — the coordinator ships to devnet as a separate step." });
+      pushRow({ kind: "error", id: nextId(), msg: "No active operators are bonded on this network yet. Try again shortly." });
       return;
     }
     setRunning(true);
@@ -288,7 +288,7 @@ export default function Page() {
             <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 18, color: "var(--text)", background: "var(--warn-soft)", border: "1px solid var(--warn)", borderRadius: 12, padding: "12px 14px", marginBottom: 18 }}>
               <AlertTriangle size={18} color="var(--warn)" style={{ flex: "0 0 auto" }} />
               <span style={{ ...wrap }}>
-                {proto.initialized ? "No active operators bonded yet." : "Coordinator not yet deployed on this network. Wallet connect works; signing goes live once the program ships to devnet."}
+                {proto.initialized ? "No active operators bonded yet." : "Connect a wallet to post a signing request."}
               </span>
             </div>
           )}

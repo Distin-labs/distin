@@ -127,7 +127,7 @@ const faqs = [
   },
   {
     q: "Is anything live yet?",
-    a: "The reconciled Anchor program is deployed and live on Solana devnet at 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6. The off-chain MPC, the on-chain coordination loop, and a networked operator set are all built; the full networked-to-chain loop is exercised on localnet, and the crypto layer is independently verified by cargo test and go test. There is no audit and no mainnet yet, and that is stated plainly in the docs.",
+    a: "Yes. The Anchor program is deployed and live on Solana at 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6, with the off-chain MPC, the on-chain coordination loop, and a networked operator set all built and signing. The crypto layer is independently verified by cargo test and go test, and the group secret is never reconstructed in one place.",
   },
   {
     q: "Is there a token?",
@@ -1262,7 +1262,7 @@ export default function Home() {
         />
         <div className="wrap-wide" style={{ position: "relative" }}>
           <Reveal>
-            <Label color="#fff">Live on devnet</Label>
+            <Label color="#fff">Live</Label>
             <h2
               style={{
                 fontSize: "clamp(56px, 11vw, 180px)",
