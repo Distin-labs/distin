@@ -58,10 +58,11 @@ export type ProtocolState = {
   totalBonded: bigint;
 };
 
-// SigningRequest account layout (after the 8-byte disc): requester 32 +
-// protocol 32 + request_id 8 + scheme 1 + target_vm 1 + target_chain_id 8 +
+// SigningRequest account layout (after the 8-byte disc): protocol 32 +
+// requester 32 + request_id 8 + scheme 1 + target_vm 1 + target_chain_id 8 +
 // message_hash 32 + threshold 2 + partials_collected 2 + stake_collected 8 +
 // required_stake 8 + created_slot 8 + expiry_slot 8 → status 1 → signature 64.
+// NOTE: protocol comes FIRST — the requester lives at bytes 40..72.
 const REQ_STATUS_OFFSET = 8 + 32 + 32 + 8 + 1 + 1 + 8 + 32 + 2 + 2 + 8 + 8 + 8 + 8;
 const REQ_SIG_OFFSET = REQ_STATUS_OFFSET + 1;
 
@@ -150,7 +151,7 @@ export async function readMyActivity(conn: Connection, wallet: PublicKey): Promi
     for (let i = 0; i < 8; i++) if (d[i] !== disc[i]) { ok = false; break; }
     if (!ok) continue;
     let mine = true;
-    for (let i = 0; i < 32; i++) if (d[8 + i] !== w[i]) { mine = false; break; }
+    for (let i = 0; i < 32; i++) if (d[40 + i] !== w[i]) { mine = false; break; }
     if (!mine) continue;
     const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
     const requestId = Number(dv.getBigUint64(8 + 32 + 32, true));
