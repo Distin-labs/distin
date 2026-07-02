@@ -1262,7 +1262,7 @@ export default function Home() {
         />
         <div className="wrap-wide" style={{ position: "relative" }}>
           <Reveal>
-            <Label color="#fff">Pre-launch</Label>
+            <Label color="#fff">Live on devnet</Label>
             <h2
               style={{
                 fontSize: "clamp(56px, 11vw, 180px)",
