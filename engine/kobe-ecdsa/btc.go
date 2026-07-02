@@ -353,3 +353,9 @@ func SerializeSignedP2WPKHTx(
 	w.Write(le32(locktime))
 	return w.Bytes(), txid, nil
 }
+
+// BtcP2WPKHAddressTestnet is BtcP2WPKHAddress with the testnet HRP ("tb1..."),
+// so a threshold group can be funded from a free testnet faucet for live sends.
+func BtcP2WPKHAddressTestnet(pub *ecdsa.PublicKey) (string, error) {
+	return btcP2WPKHAddressHRP(pub, "tb")
+}
