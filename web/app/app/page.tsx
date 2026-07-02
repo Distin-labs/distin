@@ -247,14 +247,14 @@ export default function Page() {
 
   return (
     <main style={{ height: "100vh", width: "100%", background: "var(--bg)", color: "var(--text)", overflow: "hidden", display: "flex", position: "relative", isolation: "isolate", fontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif", ...PALETTE }}>
-      {/* Ambient background: the brand video, dimmed, behind the panels. */}
+      {/* Ambient background: the brand video, running strong behind the panels. */}
       <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
-        <video autoPlay muted loop playsInline style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.28 }}>
+        <video autoPlay muted loop playsInline style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }}>
           <source src="/bg_video.mp4" type="video/mp4" />
         </video>
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 90% at 70% 30%, rgba(10,13,16,0.35) 0%, rgba(10,13,16,0.72) 70%, rgba(10,13,16,0.9) 100%)" }} />
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(130% 100% at 72% 28%, rgba(10,13,16,0.12) 0%, rgba(10,13,16,0.5) 62%, rgba(10,13,16,0.82) 100%)" }} />
       </div>
-      <aside className="sidebar" style={{ width: 236, flex: "0 0 236px", boxSizing: "border-box", borderRight: "1px solid var(--border)", background: "var(--bg2)", padding: "20px 14px", display: "flex", flexDirection: "column", gap: 4, position: "sticky", top: 0, height: "100vh", zIndex: 2 }}>
+      <aside className="sidebar" style={{ width: 236, flex: "0 0 236px", boxSizing: "border-box", borderRight: "1px solid var(--border)", background: "rgba(17,21,25,0.55)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", padding: "20px 14px", display: "flex", flexDirection: "column", gap: 4, position: "sticky", top: 0, height: "100vh", zIndex: 2 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px 20px" }}>
           <img src="/logo.png" alt="Distin" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 10, objectFit: "cover" }} />
           <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.01em" }}>Distin</span>
@@ -296,7 +296,7 @@ export default function Page() {
         style={{
           display: "flex", alignItems: "center", justifyContent: "flex-end",
           padding: "18px 22px", borderBottom: "1px solid var(--border)", gap: 12, boxSizing: "border-box",
-          position: "sticky", top: 0, background: "var(--bg)", zIndex: 5,
+          position: "sticky", top: 0, background: "rgba(10,13,16,0.5)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", zIndex: 5,
         }}
       >
         <button
