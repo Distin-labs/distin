@@ -430,7 +430,13 @@ export default function Page() {
                 {activity.map((a) => {
                   const c = VM[a.vm] ?? { name: `vm${a.vm}`, logo: "" };
                   return (
-                    <div key={a.request} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+                    <a
+                      key={a.request}
+                      href={`https://solscan.io/account/${a.request}?cluster=devnet`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, minWidth: 0, textDecoration: "none", color: "inherit", cursor: "pointer" }}
+                    >
                       {c.logo ? chainImg(c.logo, 22) : <span style={{ width: 11, height: 11, borderRadius: 999, background: "#888", flex: "0 0 auto" }} />}
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ fontSize: 18, fontWeight: 700 }}>{c.name} <span style={{ fontSize: 15, color: "var(--text2)", fontWeight: 500 }}>· #{a.requestId} · {a.scheme === 0 ? "FROST" : "GG20"}</span></div>
@@ -439,7 +445,7 @@ export default function Page() {
                       <span style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 700, padding: "5px 11px", borderRadius: 999, background: a.signed ? "var(--accent-soft)" : "var(--bg3)", color: a.signed ? "var(--accent)" : "var(--text2)", border: `1px solid ${a.signed ? "var(--accent-border)" : "var(--border)"}` }}>
                         {a.signed ? <><Check size={15} /> Signed</> : <><Loader2 size={15} className="spin" /> Pending</>}
                       </span>
-                    </div>
+                    </a>
                   );
                 })}
               </div>
@@ -599,7 +605,7 @@ export default function Page() {
                       <Check size={16} color="var(--accent)" style={{ flex: "0 0 auto" }} />
                     </div>
                     <div style={rowMeta}>{r.amt} → {mid(r.dest)}</div>
-                    <div style={rowMeta}>tx {mid(r.sig, 8, 8)}</div>
+                    <a href={`https://solscan.io/tx/${r.sig}?cluster=devnet`} target="_blank" rel="noreferrer" style={{ ...rowMeta, color: "var(--accent)", textDecoration: "none" }}>tx {mid(r.sig, 8, 8)} ↗</a>
                     {r.threshSig ? (
                       <div style={{ ...rowMeta, color: "var(--accent)", display: "flex", alignItems: "center", gap: 8 }}>
                         <ShieldCheck size={16} color="var(--accent)" style={{ flex: "0 0 auto" }} />
