@@ -226,7 +226,7 @@ export default function Page() {
   };
 
   return (
-    <main style={{ minHeight: "100vh", width: "100%", background: "var(--bg)", color: "var(--text)", overflowX: "hidden", display: "flex", fontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif", ...PALETTE }}>
+    <main style={{ height: "100vh", width: "100%", background: "var(--bg)", color: "var(--text)", overflow: "hidden", display: "flex", fontFamily: "var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif", ...PALETTE }}>
       <aside className="sidebar" style={{ width: 236, flex: "0 0 236px", boxSizing: "border-box", borderRight: "1px solid var(--border)", background: "var(--bg2)", padding: "20px 14px", display: "flex", flexDirection: "column", gap: 4, position: "sticky", top: 0, height: "100vh" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px 20px" }}>
           <img src="/logo.png" alt="Distin" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 10, objectFit: "cover" }} />
@@ -264,11 +264,12 @@ export default function Page() {
         </div>
       </aside>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, height: "100vh", overflowY: "auto" }}>
       <header
         style={{
           display: "flex", alignItems: "center", justifyContent: "flex-end",
           padding: "18px 22px", borderBottom: "1px solid var(--border)", gap: 12, boxSizing: "border-box",
+          position: "sticky", top: 0, background: "var(--bg)", zIndex: 5,
         }}
       >
         <button
