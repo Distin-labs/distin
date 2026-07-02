@@ -129,10 +129,6 @@ const faqs = [
     q: "Is anything live yet?",
     a: "Yes. The Anchor program is deployed and live on Solana at 4xy9dYHfAzi7cAcX5JHxNR6EoMJ9PGfeQDMHx6YUQQM6, with the off-chain MPC, the on-chain coordination loop, and a networked operator set all built and signing. The crypto layer is independently verified by cargo test and go test, and the group secret is never reconstructed in one place.",
   },
-  {
-    q: "Is there a token?",
-    a: "No. Any token using the Distin name is a scam. If a real one ever ships, the only place it appears first is on-chain.",
-  },
 ]
 
 const css = `
