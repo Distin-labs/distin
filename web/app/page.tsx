@@ -1246,11 +1246,20 @@ export default function Home() {
           muted
           loop
           playsInline
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.32 }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }}
         >
           <source src="/bg_video.mp4" type="video/mp4" />
         </video>
-        <div style={{ position: "absolute", inset: 0, background: "rgba(6,6,6,0.66)" }} />
+        {/* Keep the copy column (left) readable, but let the video show through
+            the rest instead of drowning the whole section in flat near-black. */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(90deg, rgba(6,6,6,0.8) 0%, rgba(6,6,6,0.58) 40%, rgba(6,6,6,0.32) 100%)",
+          }}
+        />
         <div className="wrap-wide" style={{ position: "relative" }}>
           <Reveal>
             <Label color="#fff">You are early</Label>

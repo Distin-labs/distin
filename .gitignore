@@ -9,6 +9,9 @@ deploy.json
 *shares*.json
 *.share.json
 operators/
+engine/coordinator/keys/
+engine/coordinator/keys-plaintext-backup/
+engine/kobe-ecdsa/keys/
 
 # Rust / Anchor
 target/
