@@ -6,8 +6,8 @@ import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDown, ArrowDownRight, AlertTriangle, FileText, Code, ChevronDown } from "lucide-react";
 import {
   RPC_URL, CLUSTER_LABEL, PROGRAM_ID,
-  Scheme, TargetVm, readProtocol, readRequest, readDashboard, sendCreateRequest,
-  type ProtocolState, type DashStats,
+  Scheme, TargetVm, readProtocol, readRequest, readDashboard, readMyActivity, sendCreateRequest,
+  type ProtocolState, type DashStats, type ActivityItem,
 } from "./distin";
 import { BarChart3 } from "lucide-react";
 import { hexToBytes } from "viem";
@@ -62,8 +62,9 @@ export default function Page() {
   const [intents, setIntents] = useState(0);
   const [wallet, setWallet] = useState<string | null>(null);
   const [proto, setProto] = useState<ProtocolState | null>(null);
-  const [view, setView] = useState<"sign" | "dashboard">("sign");
+  const [view, setView] = useState<"sign" | "dashboard" | "activity">("sign");
   const [dash, setDash] = useState<DashStats | null>(null);
+  const [activity, setActivity] = useState<ActivityItem[] | null>(null);
   const [chainMenu, setChainMenu] = useState(false);
   const idRef = useRef(0);
 
@@ -95,6 +96,15 @@ export default function Page() {
     readDashboard(conn, proto).then((d) => { if (live) setDash(d); }).catch(() => {});
     return () => { live = false; };
   }, [view, proto, conn]);
+
+  // Load the connected wallet's own on-chain signing history for Activity.
+  useEffect(() => {
+    if (view !== "activity" || !wallet) return;
+    let live = true;
+    setActivity(null);
+    readMyActivity(conn, new PublicKey(wallet)).then((a) => { if (live) setActivity(a); }).catch(() => { if (live) setActivity([]); });
+    return () => { live = false; };
+  }, [view, wallet, conn]);
 
   useEffect(() => {
     const sol = getProvider();
@@ -236,7 +246,7 @@ export default function Page() {
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", color: "var(--text2)", padding: "8px 12px 6px" }}>MENU</div>
         {navItem(<Zap size={19} />, "Sign", view === "sign", () => setView("sign"))}
         {navItem(<BarChart3 size={19} />, "Dashboard", view === "dashboard", () => setView("dashboard"))}
-        {navItem(<Radio size={19} />, "Activity", false, () => { setView("sign"); setTimeout(() => document.getElementById("feed")?.scrollIntoView({ behavior: "smooth" }), 50); })}
+        {navItem(<Radio size={19} />, "Activity", view === "activity", () => setView("activity"))}
 
         <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", color: "var(--text2)", padding: "18px 12px 6px" }}>RESOURCES</div>
         {navItem(<FileText size={19} />, "Docs", false, undefined, "https://distin.xyz/docs")}
@@ -386,6 +396,49 @@ export default function Page() {
               </>
             );
           })()}
+        </section>
+      )}
+
+      {view === "activity" && (
+        <section style={{ maxWidth: 900, margin: "0 auto", padding: "24px 22px 40px", boxSizing: "border-box" }}>
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em" }}>Your activity</div>
+            <div style={{ fontSize: 17, color: "var(--text2)", marginTop: 3 }}>Signing requests posted by your wallet, read from chain.</div>
+          </div>
+          {(() => {
+            const VM = [
+              { name: "Aptos", dot: "#5fd8c4" }, { name: "Ethereum", dot: "#8aa0e8" }, { name: "Tron", dot: "#e0746e" },
+              { name: "Cosmos", dot: "#aab0cc" }, { name: "Bitcoin", dot: "#f7931a" },
+            ];
+            const empty = (msg: string) => (
+              <div style={{ border: "1px dashed var(--border)", background: "var(--bg2)", borderRadius: 14, padding: "40px 20px", fontSize: 18, color: "var(--text2)", textAlign: "center" }}>{msg}</div>
+            );
+            if (!wallet) return empty("Connect your wallet to see your signing history.");
+            if (activity === null) return empty("Loading your requests…");
+            if (activity.length === 0) return empty("No signing requests yet. Post one from Sign.");
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {activity.map((a) => {
+                  const c = VM[a.vm] ?? { name: `vm${a.vm}`, dot: "#888" };
+                  return (
+                    <div key={a.request} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+                      <span style={{ width: 11, height: 11, borderRadius: 999, background: c.dot, flex: "0 0 auto" }} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 18, fontWeight: 700 }}>{c.name} <span style={{ fontSize: 15, color: "var(--text2)", fontWeight: 500 }}>· #{a.requestId} · {a.scheme === 0 ? "FROST" : "GG20"}</span></div>
+                        <div style={{ fontSize: 15, color: "var(--text2)", fontFamily: mono, ...wrap }}>{a.signatureHex ? `sig ${mid(a.signatureHex, 12, 10)}` : "awaiting operator threshold signature…"}</div>
+                      </div>
+                      <span style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 700, padding: "5px 11px", borderRadius: 999, background: a.signed ? "var(--accent-soft)" : "var(--bg3)", color: a.signed ? "var(--accent)" : "var(--text2)", border: `1px solid ${a.signed ? "var(--accent-border)" : "var(--border)"}` }}>
+                        {a.signed ? <><Check size={15} /> Signed</> : <><Loader2 size={15} className="spin" /> Pending</>}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+          <div style={{ marginTop: 22, fontSize: 16, color: "var(--text2)", fontFamily: mono, ...wrap }}>
+            {CLUSTER_LABEL} · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)}
+          </div>
         </section>
       )}
 

@@ -127,6 +127,43 @@ export async function readDashboard(conn: Connection, proto: ProtocolState): Pro
   };
 }
 
+export type ActivityItem = {
+  request: string; // request PDA
+  requestId: number;
+  vm: number; // 0=Svm 1=Evm 2=Tron 3=Cosmos 4=Bitcoin
+  scheme: number; // 0=FROST 1=GG20
+  signed: boolean;
+  signatureHex: string | null;
+};
+
+// The connected wallet's own signing requests, read straight from chain (matched
+// by the SigningRequest discriminator + requester == wallet). Newest first.
+export async function readMyActivity(conn: Connection, wallet: PublicKey): Promise<ActivityItem[]> {
+  const disc = (await sha256("account:SigningRequest")).slice(0, 8);
+  const w = wallet.toBytes();
+  const accts = await conn.getProgramAccounts(PROGRAM_ID);
+  const items: ActivityItem[] = [];
+  for (const { pubkey, account } of accts) {
+    const d = account.data;
+    if (d.length < REQ_SIG_OFFSET + 64) continue;
+    let ok = true;
+    for (let i = 0; i < 8; i++) if (d[i] !== disc[i]) { ok = false; break; }
+    if (!ok) continue;
+    let mine = true;
+    for (let i = 0; i < 32; i++) if (d[8 + i] !== w[i]) { mine = false; break; }
+    if (!mine) continue;
+    const dv = new DataView(d.buffer, d.byteOffset, d.byteLength);
+    const requestId = Number(dv.getBigUint64(8 + 32 + 32, true));
+    const scheme = d[8 + 32 + 32 + 8];
+    const vm = d[8 + 32 + 32 + 8 + 1];
+    const sig = d.subarray(REQ_SIG_OFFSET, REQ_SIG_OFFSET + 64);
+    const signed = sig.some((x) => x !== 0);
+    items.push({ request: pubkey.toBase58(), requestId, vm, scheme, signed, signatureHex: signed ? hex(sig) : null });
+  }
+  items.sort((a, b) => b.requestId - a.requestId);
+  return items;
+}
+
 export async function readProtocol(conn: Connection): Promise<ProtocolState> {
   const info = await conn.getAccountInfo(protocolPda());
   if (!info) {
