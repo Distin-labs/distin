@@ -184,22 +184,25 @@ impl KeySet {
     }
 
     /// Reconstruct a key set previously produced by [`KeySet::to_bytes`].
+    /// Fails closed: a truncated or malformed buffer returns `Err` — key
+    /// material parsing must never panic or accept a partial set.
     pub fn from_bytes(buf: &[u8]) -> Result<Self, frost::Error> {
-        let rd = |b: &[u8], o: &mut usize, n: usize| -> Vec<u8> {
-            let s = b[*o..*o + n].to_vec();
-            *o += n;
-            s
-        };
+        fn rd<'a>(b: &'a [u8], o: &mut usize, n: usize) -> Result<&'a [u8], frost::Error> {
+            let end = o.checked_add(n).ok_or(frost::Error::DeserializationError)?;
+            let s = b.get(*o..end).ok_or(frost::Error::DeserializationError)?;
+            *o = end;
+            Ok(s)
+        }
         let mut o = 0usize;
-        let max_signers = u16::from_le_bytes(rd(buf, &mut o, 2).try_into().unwrap());
-        let min_signers = u16::from_le_bytes(rd(buf, &mut o, 2).try_into().unwrap());
-        let pk_len = u32::from_le_bytes(rd(buf, &mut o, 4).try_into().unwrap()) as usize;
-        let pubkey_package = PublicKeyPackage::deserialize(&rd(buf, &mut o, pk_len))?;
+        let max_signers = u16::from_le_bytes(rd(buf, &mut o, 2)?.try_into().unwrap());
+        let min_signers = u16::from_le_bytes(rd(buf, &mut o, 2)?.try_into().unwrap());
+        let pk_len = u32::from_le_bytes(rd(buf, &mut o, 4)?.try_into().unwrap()) as usize;
+        let pubkey_package = PublicKeyPackage::deserialize(rd(buf, &mut o, pk_len)?)?;
         let mut key_packages = BTreeMap::new();
         for i in 1..=max_signers {
             let id = Identifier::try_from(i)?;
-            let kp_len = u32::from_le_bytes(rd(buf, &mut o, 4).try_into().unwrap()) as usize;
-            let kp = KeyPackage::deserialize(&rd(buf, &mut o, kp_len))?;
+            let kp_len = u32::from_le_bytes(rd(buf, &mut o, 4)?.try_into().unwrap()) as usize;
+            let kp = KeyPackage::deserialize(rd(buf, &mut o, kp_len)?)?;
             key_packages.insert(id, kp);
         }
         Ok(Self {
