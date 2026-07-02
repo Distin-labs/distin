@@ -926,13 +926,7 @@ pub struct SubmitPartial<'info> {
 
     #[account(
         mut,
-        has_one = protocol @ DistinError::Unauthorized,
-        seeds = [
-            REQUEST_SEED,
-            protocol.key().as_ref(),
-            request.request_id.to_le_bytes().as_ref()
-        ],
-        bump = request.bump
+        has_one = protocol @ DistinError::Unauthorized
     )]
     pub request: Account<'info, SigningRequest>,
 
@@ -966,13 +960,7 @@ pub struct AggregateAndEmit<'info> {
 
     #[account(
         mut,
-        has_one = protocol @ DistinError::Unauthorized,
-        seeds = [
-            REQUEST_SEED,
-            protocol.key().as_ref(),
-            request.request_id.to_le_bytes().as_ref()
-        ],
-        bump = request.bump
+        has_one = protocol @ DistinError::Unauthorized
     )]
     pub request: Account<'info, SigningRequest>,
 }
@@ -992,12 +980,6 @@ pub struct CancelRequest<'info> {
         mut,
         has_one = protocol @ DistinError::Unauthorized,
         has_one = requester @ DistinError::Unauthorized,
-        seeds = [
-            REQUEST_SEED,
-            protocol.key().as_ref(),
-            request.request_id.to_le_bytes().as_ref()
-        ],
-        bump = request.bump,
         close = requester
     )]
     pub request: Account<'info, SigningRequest>,
@@ -1022,12 +1004,6 @@ pub struct CloseRequest<'info> {
         mut,
         has_one = protocol @ DistinError::Unauthorized,
         has_one = requester @ DistinError::Unauthorized,
-        seeds = [
-            REQUEST_SEED,
-            protocol.key().as_ref(),
-            request.request_id.to_le_bytes().as_ref()
-        ],
-        bump = request.bump,
         close = requester
     )]
     pub request: Account<'info, SigningRequest>,
