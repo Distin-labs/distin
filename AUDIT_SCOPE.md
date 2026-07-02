@@ -52,9 +52,13 @@ committed as the canonical audit ref.** Audit the deployed lineage, not HEAD.
   chained to the operator-set CA plus a per-operator pinned key. Untrusted-CA
   peers are rejected at the handshake (test-covered).
 - **Misbehavior**: a corrupt signature share triggers FROST identifiable
-  abort naming the culprit, and a signed fault attestation is produced;
-  on-chain `slash_operator_attested` verifies it against the operator's
-  registered identity and burns bond.
+  abort naming the culprit, and the operator layer produces a signed fault
+  attestation (verifiable off-chain against the operator-set PKI). In the
+  **deployed** program, slashing itself is admin-authority `slash_operator`
+  (bounded by `bonded_amount`, moves bond to the slash pool via protocol PDA,
+  recomputes oracle-gated weight, jails below `min_bond`) — the on-chain
+  attested-slashing variant exists only in undeployed HEAD (697d858) and is
+  out of scope.
 - **Economic weight** is gated on a live Pyth price (`compute_stake_weight`
   rejects non-positive prices; feed repointable only by admin via
   `set_lst_price_feed`).
@@ -76,8 +80,10 @@ committed as the canonical audit ref.** Audit the deployed lineage, not HEAD.
    operators' partials inside the slot deadline.
 2. No path mints, moves, or releases bonded LST except `register` /
    `unbond`-flow / `slash*`.
-3. `slash_operator_attested` accepts only a fault report signed by a
-   registered operator identity over the named culprit's misbehavior.
+3. `slash_operator` is callable only by the protocol admin, can never move
+   more than the operator's `bonded_amount`, always recomputes weight from
+   the residual bond, and jails below `min_bond` — check for weight/total
+   accounting drift across slash + unbond interleavings.
 4. Operator account layout (151 bytes) is preserved by every upgrade
    (see CRITICAL above — history shows this is the live failure mode).
 5. `compute_stake_weight` cannot be inflated via a stale/negative/foreign
@@ -129,3 +135,8 @@ committed as the canonical audit ref.** Audit the deployed lineage, not HEAD.
 7. **No fee/economic audit yet**: bond sizing, request fees, and slash
    fractions are demo constants (`BOND_AMOUNT`, `THRESHOLD_BPS`), not
    economically derived.
+8. **Slashing is admin-discretionary in the deployed program.** The fault
+   attestation produced by the operator layer is not verified on-chain; the
+   admin decides slashes. Wiring attestation verification into the program
+   (the HEAD design) requires an Operator account migration — schedule it as
+   an audited upgrade, not a hotfix (see CRITICAL).
