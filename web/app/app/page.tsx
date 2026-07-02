@@ -388,11 +388,13 @@ export default function Page() {
       )}
 
       {view === "sign" && (
-      <section style={{ maxWidth: 560, margin: "0 auto", padding: "38px 20px 80px", boxSizing: "border-box" }}>
-        <div style={{ marginBottom: 20 }}>
+      <section style={{ maxWidth: 1060, margin: "0 auto", padding: "38px 22px 80px", boxSizing: "border-box" }}>
+        <div style={{ marginBottom: 22 }}>
           <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em" }}>Sign</div>
           <div style={{ fontSize: 18, color: "var(--text2)", marginTop: 4 }}>Threshold-sign a native asset on any chain.</div>
         </div>
+        <div className="signgrid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 500px) minmax(0, 1fr)", gap: 22, alignItems: "start" }}>
+        <div style={{ minWidth: 0 }}>
         <div
           style={{
             background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 18,
@@ -501,9 +503,11 @@ export default function Page() {
             </span>
           </button>
         </div>
+        </div>
 
-        {/* Feed */}
-        <div id="feed" style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 30, marginBottom: 12, scrollMarginTop: 20 }}>
+        {/* Right column: live activity */}
+        <div id="feed" style={{ minWidth: 0, scrollMarginTop: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12, height: 44 }}>
           <Radio size={18} color="var(--accent)" style={{ flex: "0 0 auto" }} />
           <span style={{ fontSize: 19, fontWeight: 700 }}>Signing intents</span>
         </div>
@@ -572,15 +576,17 @@ export default function Page() {
             ))}
           </AnimatePresence>
         </div>
+        </div>
+        </div>
 
-        <div style={{ marginTop: 22, fontSize: 18, color: "var(--text2)", fontFamily: mono, ...wrap }}>
+        <div style={{ marginTop: 24, fontSize: 18, color: "var(--text2)", fontFamily: mono, ...wrap }}>
           {CLUSTER_LABEL} · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)}
         </div>
       </section>
       )}
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (max-width: 860px){ .sidebar{ display:none !important } }`}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (max-width: 860px){ .sidebar{ display:none !important } } @media (max-width: 900px){ .signgrid{ grid-template-columns: minmax(0,1fr) !important } }`}</style>
     </main>
   );
 }
