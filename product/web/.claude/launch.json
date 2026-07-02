@@ -4,8 +4,8 @@
     {
       "name": "distin-product",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "start", "-p", "3477"],
-      "port": 3477
+      "runtimeArgs": ["next", "start"],
+      "autoPort": true
     }
   ]
 }

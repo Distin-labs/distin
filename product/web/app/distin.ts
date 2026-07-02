@@ -67,6 +67,33 @@ export type ProtocolState = {
   totalBonded: bigint;
 };
 
+// SigningRequest account layout (after the 8-byte disc): requester 32 +
+// protocol 32 + request_id 8 + scheme 1 + target_vm 1 + target_chain_id 8 +
+// message_hash 32 + threshold 2 + partials_collected 2 + stake_collected 8 +
+// required_stake 8 + created_slot 8 + expiry_slot 8 → status 1 → signature 64.
+const REQ_STATUS_OFFSET = 8 + 32 + 32 + 8 + 1 + 1 + 8 + 32 + 2 + 2 + 8 + 8 + 8 + 8;
+const REQ_SIG_OFFSET = REQ_STATUS_OFFSET + 1;
+
+export type RequestResult = {
+  exists: boolean;
+  signed: boolean;
+  // 128-hex threshold signature the operator set recorded on-chain (once signed).
+  signatureHex: string | null;
+};
+
+const hex = (b: Uint8Array) =>
+  Array.from(b).map((x) => x.toString(16).padStart(2, "0")).join("");
+
+// Read the result the bonded operators wrote back: a request is "signed" once a
+// non-zero threshold signature is recorded (ed25519 for FROST, r||s for GG20).
+export async function readRequest(conn: Connection, request: PublicKey): Promise<RequestResult> {
+  const info = await conn.getAccountInfo(request);
+  if (!info) return { exists: false, signed: false, signatureHex: null };
+  const sig = info.data.subarray(REQ_SIG_OFFSET, REQ_SIG_OFFSET + 64);
+  const signed = sig.some((x) => x !== 0);
+  return { exists: true, signed, signatureHex: signed ? hex(sig) : null };
+}
+
 export async function readProtocol(conn: Connection): Promise<ProtocolState> {
   const info = await conn.getAccountInfo(protocolPda());
   if (!info) {
