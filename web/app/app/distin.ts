@@ -70,6 +70,26 @@ export type ProtocolState = {
   totalBonded: bigint;
 };
 
+// SigningRequest account: status byte then the 64-byte threshold signature.
+const REQ_SIG_OFFSET = 8 + 32 + 32 + 8 + 1 + 1 + 8 + 32 + 2 + 2 + 8 + 8 + 8 + 8 + 1;
+
+export type RequestResult = { signed: boolean; signatureHex: string | null };
+
+// Read what the bonded operators wrote back: a request is "signed" once a
+// non-zero threshold signature is recorded on-chain.
+export async function readRequest(conn: Connection, request: PublicKey): Promise<RequestResult> {
+  const info = await conn.getAccountInfo(request);
+  if (!info) return { signed: false, signatureHex: null };
+  const sig = info.data.subarray(REQ_SIG_OFFSET, REQ_SIG_OFFSET + 64);
+  const signed = sig.some((x) => x !== 0);
+  return {
+    signed,
+    signatureHex: signed
+      ? Array.from(sig).map((x) => x.toString(16).padStart(2, "0")).join("")
+      : null,
+  };
+}
+
 export async function readProtocol(conn: Connection): Promise<ProtocolState> {
   const info = await conn.getAccountInfo(protocolPda());
   if (!info) {

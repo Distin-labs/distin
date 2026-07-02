@@ -6,7 +6,7 @@ import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { Layers, Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDownRight, AlertTriangle } from "lucide-react";
 import {
   RPC_URL, CLUSTER_LABEL, PROGRAM_ID,
-  Scheme, TargetVm, readProtocol, sendCreateRequest, type ProtocolState,
+  Scheme, TargetVm, readProtocol, readRequest, sendCreateRequest, type ProtocolState,
 } from "./distin";
 
 // Chains map to the program's SignatureScheme / TargetVm enums.
@@ -21,7 +21,7 @@ const CHAINS = [
 const mid = (s: string, l = 8, r = 6) => (s.length <= l + r + 1 ? s : `${s.slice(0, l)}…${s.slice(-r)}`);
 
 type Row =
-  | { kind: "intent"; id: string; chain: string; logo: string; dest: string; amt: string; sig: string }
+  | { kind: "intent"; id: string; chain: string; logo: string; dest: string; amt: string; sig: string; threshSig: string | null }
   | { kind: "error"; id: string; msg: string };
 
 const PALETTE: React.CSSProperties = {
@@ -126,7 +126,7 @@ export default function Page() {
     const dest = destination.trim() || c.sample;
     const amt = (amount.trim() || "0.50").replace(/[^0-9.]/g, "") || "0.50";
     try {
-      const { signature } = await sendCreateRequest(
+      const { signature, request } = await sendCreateRequest(
         conn,
         { publicKey: new PublicKey(wallet), signTransaction: (t) => sol.signTransaction(t) },
         {
@@ -138,9 +138,25 @@ export default function Page() {
           validitySlots: 1000n,
         }
       );
-      pushRow({ kind: "intent", id: nextId(), chain: c.name, logo: c.logo, dest, amt, sig: signature });
+      const rowId = nextId();
+      pushRow({ kind: "intent", id: rowId, chain: c.name, logo: c.logo, dest, amt, sig: signature, threshSig: null });
       setIntents((v) => v + 1);
       setProto(await readProtocol(conn));
+      // Poll for the operator set's threshold signature, then show it on the row.
+      void (async () => {
+        for (let i = 0; i < 40; i++) {
+          await new Promise((r) => setTimeout(r, 3000));
+          try {
+            const res = await readRequest(conn, request);
+            if (res.signed && res.signatureHex) {
+              setFeed((f) => f.map((row) =>
+                row.id === rowId && row.kind === "intent" ? { ...row, threshSig: res.signatureHex } : row
+              ));
+              return;
+            }
+          } catch { /* transient RPC — keep polling */ }
+        }
+      })();
     } catch (e: any) {
       pushRow({ kind: "error", id: nextId(), msg: e?.message ?? "Transaction failed." });
     } finally {
@@ -353,6 +369,17 @@ export default function Page() {
                     </div>
                     <div style={rowMeta}>{r.amt} → {mid(r.dest)}</div>
                     <div style={rowMeta}>tx {mid(r.sig, 8, 8)}</div>
+                    {r.threshSig ? (
+                      <div style={{ ...rowMeta, color: "var(--accent)", display: "flex", alignItems: "center", gap: 8 }}>
+                        <ShieldCheck size={16} color="var(--accent)" style={{ flex: "0 0 auto" }} />
+                        <span style={{ ...wrap }}>signed by operators · {mid(r.threshSig, 10, 8)}</span>
+                      </div>
+                    ) : (
+                      <div style={{ ...rowMeta, display: "flex", alignItems: "center", gap: 8 }}>
+                        <Loader2 size={16} className="spin" style={{ flex: "0 0 auto" }} />
+                        <span style={{ ...wrap }}>awaiting operator threshold signature…</span>
+                      </div>
+                    )}
                   </>
                 )}
                 {r.kind === "error" && (
