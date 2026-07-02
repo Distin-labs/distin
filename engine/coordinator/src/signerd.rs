@@ -1030,6 +1030,7 @@ fn launch_named_operators(
     tag: &str,
 ) -> Vec<OpProc> {
     let mut procs = Vec::new();
+    std::fs::create_dir_all(log_dir).ok(); // may be pruned on a fresh host
     for idx in 0..3 {
         let cfg = format!("{ops_dir}/op{idx}.json");
         let log = std::fs::File::create(format!("{log_dir}/{tag}-op{idx}.log")).unwrap();
