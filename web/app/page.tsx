@@ -131,7 +131,7 @@ const faqs = [
   },
   {
     q: "Is there a token?",
-    a: "No token is live. Distin is the signing protocol first. Any future asset would be announced on-chain, never implied here.",
+    a: "No. Any token using the Distin name is a scam. If a real one ever ships, the only place it appears first is on-chain.",
   },
 ]
 
