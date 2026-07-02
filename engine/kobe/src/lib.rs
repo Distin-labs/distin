@@ -159,6 +159,56 @@ impl KeySet {
     pub fn min_signers(&self) -> u16 {
         self.min_signers
     }
+
+    /// Serialize the whole key set (every operator's `KeyPackage` + the shared
+    /// `PublicKeyPackage`) to bytes so a long-running signer can persist the ONE
+    /// group key it registered on-chain and reuse it across restarts. Without
+    /// this the daemon would keygen afresh every boot and its aggregate would not
+    /// verify against the registered group public key.
+    pub fn to_bytes(&self) -> Result<Vec<u8>, frost::Error> {
+        let mut out = Vec::new();
+        out.extend_from_slice(&self.max_signers.to_le_bytes());
+        out.extend_from_slice(&self.min_signers.to_le_bytes());
+        let pk = self.pubkey_package.serialize()?;
+        out.extend_from_slice(&(pk.len() as u32).to_le_bytes());
+        out.extend_from_slice(&pk);
+        // KeyPackages are stored in identifier order 1..=max_signers, so the
+        // identifier itself never needs to be persisted (Default IdentifierList).
+        for i in 1..=self.max_signers {
+            let id = Identifier::try_from(i)?;
+            let kp = self.key_packages[&id].serialize()?;
+            out.extend_from_slice(&(kp.len() as u32).to_le_bytes());
+            out.extend_from_slice(&kp);
+        }
+        Ok(out)
+    }
+
+    /// Reconstruct a key set previously produced by [`KeySet::to_bytes`].
+    pub fn from_bytes(buf: &[u8]) -> Result<Self, frost::Error> {
+        let rd = |b: &[u8], o: &mut usize, n: usize| -> Vec<u8> {
+            let s = b[*o..*o + n].to_vec();
+            *o += n;
+            s
+        };
+        let mut o = 0usize;
+        let max_signers = u16::from_le_bytes(rd(buf, &mut o, 2).try_into().unwrap());
+        let min_signers = u16::from_le_bytes(rd(buf, &mut o, 2).try_into().unwrap());
+        let pk_len = u32::from_le_bytes(rd(buf, &mut o, 4).try_into().unwrap()) as usize;
+        let pubkey_package = PublicKeyPackage::deserialize(&rd(buf, &mut o, pk_len))?;
+        let mut key_packages = BTreeMap::new();
+        for i in 1..=max_signers {
+            let id = Identifier::try_from(i)?;
+            let kp_len = u32::from_le_bytes(rd(buf, &mut o, 4).try_into().unwrap()) as usize;
+            let kp = KeyPackage::deserialize(&rd(buf, &mut o, kp_len))?;
+            key_packages.insert(id, kp);
+        }
+        Ok(Self {
+            key_packages,
+            pubkey_package,
+            max_signers,
+            min_signers,
+        })
+    }
 }
 
 /// Run a full t-of-n FROST Ed25519 threshold-signing ceremony over `message`.
