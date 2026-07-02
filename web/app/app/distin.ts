@@ -14,9 +14,6 @@ import {
 } from "@solana/web3.js";
 
 // --- Deployment config (env-overridable for devnet/mainnet shipping) ---
-// Public deploy points at devnet so the wallet connects to a real network.
-// The coordinator program ships to devnet as a separate operator step; until
-// then readProtocol() reports uninitialized and the UI says so honestly.
 export const RPC_URL =
   process.env.NEXT_PUBLIC_RPC_URL ?? "https://api.devnet.solana.com";
 export const PROGRAM_ID = new PublicKey(
@@ -61,23 +58,66 @@ export type ProtocolState = {
   totalBonded: bigint;
 };
 
-// SigningRequest account: status byte then the 64-byte threshold signature.
-const REQ_SIG_OFFSET = 8 + 32 + 32 + 8 + 1 + 1 + 8 + 32 + 2 + 2 + 8 + 8 + 8 + 8 + 1;
+// SigningRequest account layout (after the 8-byte disc): requester 32 +
+// protocol 32 + request_id 8 + scheme 1 + target_vm 1 + target_chain_id 8 +
+// message_hash 32 + threshold 2 + partials_collected 2 + stake_collected 8 +
+// required_stake 8 + created_slot 8 + expiry_slot 8 → status 1 → signature 64.
+const REQ_STATUS_OFFSET = 8 + 32 + 32 + 8 + 1 + 1 + 8 + 32 + 2 + 2 + 8 + 8 + 8 + 8;
+const REQ_SIG_OFFSET = REQ_STATUS_OFFSET + 1;
 
-export type RequestResult = { signed: boolean; signatureHex: string | null };
+export type RequestResult = {
+  exists: boolean;
+  signed: boolean;
+  // 128-hex threshold signature the operator set recorded on-chain (once signed).
+  signatureHex: string | null;
+};
 
-// Read what the bonded operators wrote back: a request is "signed" once a
-// non-zero threshold signature is recorded on-chain.
+const hex = (b: Uint8Array) =>
+  Array.from(b).map((x) => x.toString(16).padStart(2, "0")).join("");
+
+// Read the result the bonded operators wrote back: a request is "signed" once a
+// non-zero threshold signature is recorded (ed25519 for FROST, r||s for GG20).
 export async function readRequest(conn: Connection, request: PublicKey): Promise<RequestResult> {
   const info = await conn.getAccountInfo(request);
-  if (!info) return { signed: false, signatureHex: null };
+  if (!info) return { exists: false, signed: false, signatureHex: null };
   const sig = info.data.subarray(REQ_SIG_OFFSET, REQ_SIG_OFFSET + 64);
   const signed = sig.some((x) => x !== 0);
+  return { exists: true, signed, signatureHex: signed ? hex(sig) : null };
+}
+
+export type DashStats = {
+  totalRequests: number;
+  settled: number;
+  operators: number;
+  bondedWeight: number;
+  frost: number; // FROST (Ed25519) requests
+  gg20: number; // GG20 (secp256k1) requests
+};
+
+// Real, on-chain dashboard numbers. Scans every SigningRequest account (matched
+// by the Anchor account discriminator) and buckets by scheme + settled status.
+// No historical time-series — there is no indexer, so we never fabricate one.
+export async function readDashboard(conn: Connection, proto: ProtocolState): Promise<DashStats> {
+  const disc = (await sha256("account:SigningRequest")).slice(0, 8);
+  const accts = await conn.getProgramAccounts(PROGRAM_ID);
+  let settled = 0, frost = 0, gg20 = 0;
+  for (const { account } of accts) {
+    const d = account.data;
+    if (d.length < REQ_SIG_OFFSET + 64) continue;
+    let isReq = true;
+    for (let i = 0; i < 8; i++) if (d[i] !== disc[i]) { isReq = false; break; }
+    if (!isReq) continue;
+    const scheme = d[8 + 32 + 32 + 8]; // 0=FROST, 1=GG20
+    if (scheme === 0) frost++; else if (scheme === 1) gg20++;
+    if (d.subarray(REQ_SIG_OFFSET, REQ_SIG_OFFSET + 64).some((x) => x !== 0)) settled++;
+  }
   return {
-    signed,
-    signatureHex: signed
-      ? Array.from(sig).map((x) => x.toString(16).padStart(2, "0")).join("")
-      : null,
+    totalRequests: Number(proto.requestNonce),
+    settled,
+    operators: proto.operatorCount,
+    bondedWeight: Number(proto.totalBonded) / 1e9,
+    frost,
+    gg20,
   };
 }
 
@@ -112,6 +152,9 @@ export type IntentArgs = {
   intent: string;
   threshold: number;
   validitySlots: bigint;
+  // When set, this exact 32-byte digest is signed instead of sha256(intent) —
+  // used to sign the real sighash of an on-target-chain transaction.
+  messageHash?: Uint8Array;
 };
 
 // Build the create_signing_request instruction for the connected wallet.
@@ -123,17 +166,18 @@ export async function buildCreateRequestIx(
   const protocol = protocolPda();
 
   // A client-chosen random nonce fully determines the request PDA (seeded by
-  // requester + this nonce), so the address never depends on a global counter —
-  // which removes the race that made wallet pre-flight simulation fail.
+  // requester + this nonce), so the address never depends on a global counter.
+  // That removes the race that made wallet pre-flight simulation fail.
   const cnLE = crypto.getRandomValues(new Uint8Array(8));
   const request = PublicKey.findProgramAddressSync(
     [REQUEST_SEED, requester.toBuffer(), cnLE],
     PROGRAM_ID
   )[0];
 
-  const messageHash = await sha256(args.intent);
+  const messageHash = args.messageHash ?? (await sha256(args.intent));
 
-  // Borsh-style little-endian arg encoding (client_nonce is the FIRST arg).
+  // Borsh-style little-endian arg encoding, matching the program signature
+  // (client_nonce is the FIRST arg, right after the discriminator).
   const buf = new Uint8Array(8 + 8 + 1 + 1 + 8 + 32 + 2 + 8);
   let o = 0;
   buf.set(CREATE_REQUEST_DISC, o); o += 8;
@@ -160,34 +204,19 @@ export async function buildCreateRequestIx(
 }
 
 // Sign + send via the injected wallet, then confirm. Returns the tx signature.
-// The request PDA is derived from the protocol's global nonce; if another
-// request lands in the window between build and send, that nonce goes stale and
-// the tx (and its wallet-side simulation) fails. So we build against the very
-// latest nonce and retry once with a fresh one, which clears any such race.
 export async function sendCreateRequest(
   conn: Connection,
   wallet: { publicKey: PublicKey; signTransaction: (t: Transaction) => Promise<Transaction> },
   args: IntentArgs
 ): Promise<{ signature: string; request: PublicKey }> {
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const { ix, request } = await buildCreateRequestIx(conn, wallet.publicKey, args);
-    const tx = new Transaction().add(ix);
-    tx.feePayer = wallet.publicKey;
-    const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
-    tx.recentBlockhash = blockhash;
-    try {
-      const signed = await wallet.signTransaction(tx);
-      const signature = await conn.sendRawTransaction(signed.serialize());
-      await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
-      return { signature, request };
-    } catch (e) {
-      lastErr = e;
-      // Only retry a stale-nonce collision (request PDA already in use); a user
-      // rejection or any other error should surface immediately.
-      const msg = String((e as any)?.message ?? e);
-      if (!/already in use|custom program error|0x0|simulat/i.test(msg)) throw e;
-    }
-  }
-  throw lastErr;
+  const { ix, request } = await buildCreateRequestIx(conn, wallet.publicKey, args);
+  const tx = new Transaction().add(ix);
+  tx.feePayer = wallet.publicKey;
+  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
+  tx.recentBlockhash = blockhash;
+
+  const signed = await wallet.signTransaction(tx);
+  const signature = await conn.sendRawTransaction(signed.serialize());
+  await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+  return { signature, request };
 }
