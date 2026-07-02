@@ -706,7 +706,7 @@ export default function Home() {
                   honeypot to drain.
                 </p>
                 <p style={{ fontSize: 19, color: "#fff", margin: "0 0 30px", fontWeight: 600, lineHeight: 1.5 }}>
-                  You are early. Clone it and watch a signature no bridge could fake verify in{" "}
+                  Clone it and an independent verifier accepts the group signature in{" "}
                   <span style={{ color: ACCENT_TEXT }}>under two minutes</span>.
                 </p>
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 18 }}>
@@ -1262,7 +1262,7 @@ export default function Home() {
         />
         <div className="wrap-wide" style={{ position: "relative" }}>
           <Reveal>
-            <Label color="#fff">You are early</Label>
+            <Label color="#fff">Pre-launch</Label>
             <h2
               style={{
                 fontSize: "clamp(56px, 11vw, 180px)",
@@ -1273,15 +1273,15 @@ export default function Home() {
                 maxWidth: 1300,
               }}
             >
-              Don&rsquo;t take
+              Run
               <br />
-              our word.
+              the tests.
             </h2>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 40, marginTop: 48 }}>
               <p style={{ fontSize: 21, color: MUTED, margin: 0, maxWidth: 520, lineHeight: 1.55 }}>
-                Clone the repo, run cargo test and go test, and in under two minutes watch an
-                independent verifier accept a threshold signature the group key never produced in one
-                place. The proof is the whole pitch. Connect a wallet and get in before it ships.
+                Clone the repo. cargo test and go test reproduce it in under two minutes: an
+                independent verifier accepting a threshold signature the group key never assembled in
+                one place. The code is the argument.
               </p>
               <button
                 onClick={connectWallet}
