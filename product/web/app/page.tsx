@@ -6,8 +6,10 @@ import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDown, ArrowDownRight, AlertTriangle, FileText, Code } from "lucide-react";
 import {
   RPC_URL, CLUSTER_LABEL, PROGRAM_ID,
-  Scheme, TargetVm, readProtocol, readRequest, sendCreateRequest, type ProtocolState,
+  Scheme, TargetVm, readProtocol, readRequest, readDashboard, sendCreateRequest,
+  type ProtocolState, type DashStats,
 } from "./distin";
+import { BarChart3 } from "lucide-react";
 import { hexToBytes } from "viem";
 import { buildEthTransfer, ethSighash, assembleSignedTx, broadcastEth } from "./eth";
 
@@ -60,6 +62,8 @@ export default function Page() {
   const [intents, setIntents] = useState(0);
   const [wallet, setWallet] = useState<string | null>(null);
   const [proto, setProto] = useState<ProtocolState | null>(null);
+  const [view, setView] = useState<"sign" | "dashboard">("sign");
+  const [dash, setDash] = useState<DashStats | null>(null);
   const idRef = useRef(0);
 
   const conn = useMemo(() => new Connection(RPC_URL, "confirmed"), []);
@@ -82,6 +86,14 @@ export default function Page() {
     const t = setInterval(load, 6000);
     return () => { live = false; clearInterval(t); };
   }, [conn]);
+
+  // Load real dashboard numbers whenever the dashboard is open.
+  useEffect(() => {
+    if (view !== "dashboard" || !proto) return;
+    let live = true;
+    readDashboard(conn, proto).then((d) => { if (live) setDash(d); }).catch(() => {});
+    return () => { live = false; };
+  }, [view, proto, conn]);
 
   useEffect(() => {
     const sol = getProvider();
@@ -220,8 +232,9 @@ export default function Page() {
           <img src="/logo.png" alt="Distin" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 10, objectFit: "cover" }} />
           <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.01em" }}>Distin</span>
         </div>
-        {navItem(<Zap size={19} />, "Sign", true)}
-        {navItem(<Radio size={19} />, "Activity", false, () => document.getElementById("feed")?.scrollIntoView({ behavior: "smooth" }))}
+        {navItem(<Zap size={19} />, "Sign", view === "sign", () => setView("sign"))}
+        {navItem(<BarChart3 size={19} />, "Dashboard", view === "dashboard", () => setView("dashboard"))}
+        {navItem(<Radio size={19} />, "Activity", false, () => { setView("sign"); setTimeout(() => document.getElementById("feed")?.scrollIntoView({ behavior: "smooth" }), 50); })}
         {navItem(<FileText size={19} />, "Docs", false, undefined, "https://distin.xyz/docs")}
         {navItem(<Code size={19} />, "GitHub", false, undefined, "https://github.com/Distin-labs/distin")}
         <div style={{ marginTop: "auto", fontSize: 15, color: "var(--text2)", padding: "10px 8px", lineHeight: 1.5 }}>
@@ -252,6 +265,53 @@ export default function Page() {
         </button>
       </header>
 
+      {view === "dashboard" && (
+        <section style={{ maxWidth: 1040, margin: "0 auto", padding: "34px 22px 80px", boxSizing: "border-box" }}>
+          <div style={{ fontSize: 30, fontWeight: 800, marginBottom: 22, letterSpacing: "-0.02em" }}>Network stats</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginBottom: 14 }}>
+            {([
+              ["Requests to date", dash ? dash.totalRequests.toLocaleString() : "—"],
+              ["Signatures settled", dash ? dash.settled.toLocaleString() : "—"],
+              ["Active operators", proto ? String(proto.operatorCount) : "—"],
+              ["Bonded weight", proto ? (Number(proto.totalBonded) / 1e9).toFixed(2) : "—"],
+            ] as [string, string][]).map(([label, value]) => (
+              <div key={label} style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px 20px" }}>
+                <div style={{ fontSize: 17, color: "var(--text2)", marginBottom: 8 }}>{label}</div>
+                <div style={{ fontSize: 34, fontWeight: 800, fontFamily: mono }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: "22px 22px" }}>
+            <div style={{ fontSize: 21, fontWeight: 700, marginBottom: 4 }}>Requests by scheme</div>
+            <div style={{ fontSize: 16, color: "var(--text2)", marginBottom: 20 }}>Live devnet, read straight from on-chain accounts. No historical index — nothing fabricated.</div>
+            {([
+              ["FROST · Ed25519", "Aptos / SVM / Cosmos", dash?.frost ?? 0, "#23dcc8"],
+              ["GG20 · secp256k1", "Bitcoin / Ethereum / Tron", dash?.gg20 ?? 0, "#3aa0ff"],
+            ] as [string, string, number, string][]).map(([name, chains, count, color]) => {
+              const total = Math.max(1, (dash?.frost ?? 0) + (dash?.gg20 ?? 0));
+              const pct = Math.round((count / total) * 100);
+              return (
+                <div key={name} style={{ marginBottom: 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+                    <div><span style={{ fontSize: 18, fontWeight: 700 }}>{name}</span> <span style={{ fontSize: 16, color: "var(--text2)" }}>· {chains}</span></div>
+                    <span style={{ fontSize: 20, fontWeight: 800, fontFamily: mono }}>{count.toLocaleString()}</span>
+                  </div>
+                  <div style={{ height: 12, borderRadius: 999, background: "var(--bg3)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 999, transition: "width 0.4s ease" }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ marginTop: 22, fontSize: 18, color: "var(--text2)", fontFamily: mono, ...wrap }}>
+            {CLUSTER_LABEL} · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)}
+          </div>
+        </section>
+      )}
+
+      {view === "sign" && (
       <section style={{ maxWidth: 560, margin: "0 auto", padding: "40px 20px 80px", boxSizing: "border-box" }}>
         <div
           style={{
@@ -451,6 +511,7 @@ export default function Page() {
           {CLUSTER_LABEL} · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)}
         </div>
       </section>
+      )}
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (max-width: 860px){ .sidebar{ display:none !important } }`}</style>

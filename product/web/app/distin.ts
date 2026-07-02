@@ -85,6 +85,42 @@ export async function readRequest(conn: Connection, request: PublicKey): Promise
   return { exists: true, signed, signatureHex: signed ? hex(sig) : null };
 }
 
+export type DashStats = {
+  totalRequests: number;
+  settled: number;
+  operators: number;
+  bondedWeight: number;
+  frost: number; // FROST (Ed25519) requests
+  gg20: number; // GG20 (secp256k1) requests
+};
+
+// Real, on-chain dashboard numbers. Scans every SigningRequest account (matched
+// by the Anchor account discriminator) and buckets by scheme + settled status.
+// No historical time-series — there is no indexer, so we never fabricate one.
+export async function readDashboard(conn: Connection, proto: ProtocolState): Promise<DashStats> {
+  const disc = (await sha256("account:SigningRequest")).slice(0, 8);
+  const accts = await conn.getProgramAccounts(PROGRAM_ID);
+  let settled = 0, frost = 0, gg20 = 0;
+  for (const { account } of accts) {
+    const d = account.data;
+    if (d.length < REQ_SIG_OFFSET + 64) continue;
+    let isReq = true;
+    for (let i = 0; i < 8; i++) if (d[i] !== disc[i]) { isReq = false; break; }
+    if (!isReq) continue;
+    const scheme = d[8 + 32 + 32 + 8]; // 0=FROST, 1=GG20
+    if (scheme === 0) frost++; else if (scheme === 1) gg20++;
+    if (d.subarray(REQ_SIG_OFFSET, REQ_SIG_OFFSET + 64).some((x) => x !== 0)) settled++;
+  }
+  return {
+    totalRequests: Number(proto.requestNonce),
+    settled,
+    operators: proto.operatorCount,
+    bondedWeight: Number(proto.totalBonded) / 1e9,
+    frost,
+    gg20,
+  };
+}
+
 export async function readProtocol(conn: Connection): Promise<ProtocolState> {
   const info = await conn.getAccountInfo(protocolPda());
   if (!info) {
