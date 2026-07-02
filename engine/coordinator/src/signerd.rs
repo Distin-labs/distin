@@ -429,19 +429,24 @@ fn run(rpc: &RpcClient, program: &Pubkey) {
             if r.status != 0 || slot > r.expiry_slot {
                 continue; // only Pending, not expired
             }
-            let res = match r.scheme {
+            // Isolate each request: a panic inside fulfill (e.g. an RPC send that
+            // unwraps on a transient error) must skip this one request, never take
+            // the whole daemon down. catch_unwind turns it into a logged skip.
+            let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match r.scheme {
                 0 => match &frostnet {
                     Some(f) => fulfill_frostnet(rpc, program, &protocol, &admin, f, &pda, &r),
                     None => fulfill(rpc, program, &protocol, &admin, &ops, &keyset, &pda, &r),
                 },
                 1 => match &gg20 {
                     Some(g) => fulfill_gg20(rpc, program, &protocol, &admin, g, &pda, &r),
-                    None => continue, // no GG20 set bootstrapped yet
+                    None => Ok(()), // no GG20 set bootstrapped yet
                 },
-                _ => continue,
-            };
-            if let Err(e) = res {
-                eprintln!("  request {pda}: {e}");
+                _ => Ok(()),
+            }));
+            match outcome {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => eprintln!("  request {pda}: {e}"),
+                Err(_) => eprintln!("  request {pda}: signing panicked, skipping (daemon stays up)"),
             }
         }
         std::thread::sleep(Duration::from_secs(3));
