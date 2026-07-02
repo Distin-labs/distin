@@ -102,13 +102,17 @@ export default function Page() {
     return () => { live = false; };
   }, [view, proto, conn]);
 
-  // Load the connected wallet's own on-chain signing history for Activity.
+  // Load the connected wallet's own on-chain signing history for Activity, and
+  // keep it fresh while the tab is open (a request signs seconds after posting).
   useEffect(() => {
     if (view !== "activity" || !wallet) return;
     let live = true;
     setActivity(null);
-    readMyActivity(conn, new PublicKey(wallet)).then((a) => { if (live) setActivity(a); }).catch(() => { if (live) setActivity([]); });
-    return () => { live = false; };
+    const load = () =>
+      readMyActivity(conn, new PublicKey(wallet)).then((a) => { if (live) setActivity(a); }).catch(() => { if (live) setActivity((p) => p ?? []); });
+    load();
+    const t = setInterval(load, 6000);
+    return () => { live = false; clearInterval(t); };
   }, [view, wallet, conn]);
 
   useEffect(() => {
