@@ -104,11 +104,6 @@ export default function Page() {
 
   const ready = proto?.initialized && (proto?.operatorCount ?? 0) > 0;
 
-  const preview = useMemo(() => {
-    const bonded = proto ? Number(proto.totalBonded) / 1e9 : 0;
-    const ops = proto?.operatorCount ?? 0;
-    return `1-of-${ops || "—"} · ${chain.scheme} (${chain.curve}) · ${bonded.toFixed(2)} weight bonded`;
-  }, [chain, proto]);
 
   // THE CORE USER ACTION: post a real cross-VM signing intent on-chain.
   const run = useCallback(async () => {
@@ -302,9 +297,19 @@ export default function Page() {
             />
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 18, color: "var(--text2)", fontFamily: mono, padding: "4px 4px", marginBottom: 16 }}>
-            <ShieldCheck size={18} color="var(--accent)" style={{ flex: "0 0 auto" }} />
-            <span style={{ ...wrap }}>{preview}</span>
+          {/* THORSwap-style details table */}
+          <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: "13px 15px", marginBottom: 16, display: "flex", flexDirection: "column", gap: 9 }}>
+            {([
+              ["Signed by", `${proto?.operatorCount ?? 0} bonded operators`],
+              ["Scheme", `${chain.scheme} · ${chain.curve}`],
+              ["Settles as", `native ${chain.name}, no wrapping`],
+              ["Secured by", "slashable bond, coordinated on Solana"],
+            ] as [string, string][]).map(([k, v]) => (
+              <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 14, fontSize: 17 }}>
+                <span style={{ color: "var(--text2)", flex: "0 0 auto" }}>{k}</span>
+                <span style={{ color: "var(--text)", fontFamily: mono, textAlign: "right", ...wrap }}>{v}</span>
+              </div>
+            ))}
           </div>
 
           {proto && !ready && (
