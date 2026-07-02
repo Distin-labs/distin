@@ -30,7 +30,7 @@ import (
 	kobe "github.com/distin/kobe-ecdsa"
 )
 
-const esplora = "https://blockstream.info/testnet/api"
+var esplora = envOr("DISTIN_ESPLORA", "https://mempool.space/testnet/api")
 
 func main() {
 	if len(os.Args) < 3 {
