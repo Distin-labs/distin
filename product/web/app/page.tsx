@@ -8,6 +8,8 @@ import {
   RPC_URL, CLUSTER_LABEL, PROGRAM_ID,
   Scheme, TargetVm, readProtocol, readRequest, sendCreateRequest, type ProtocolState,
 } from "./distin";
+import { hexToBytes } from "viem";
+import { buildEthTransfer, ethSighash, assembleSignedTx, broadcastEth } from "./eth";
 
 // Chains map to the program's SignatureScheme / TargetVm enums.
 const CHAINS = [
@@ -21,7 +23,7 @@ const CHAINS = [
 const mid = (s: string, l = 8, r = 6) => (s.length <= l + r + 1 ? s : `${s.slice(0, l)}…${s.slice(-r)}`);
 
 type Row =
-  | { kind: "intent"; id: string; chain: string; dot: string; dest: string; amt: string; sig: string; request: string; threshSig: string | null }
+  | { kind: "intent"; id: string; chain: string; dot: string; dest: string; amt: string; sig: string; request: string; threshSig: string | null; ethRaw?: string | null; ethHash?: string; ethSent?: string; ethErr?: string }
   | { kind: "error"; id: string; msg: string };
 
 const PALETTE: React.CSSProperties = {
@@ -122,6 +124,12 @@ export default function Page() {
     const dest = destination.trim() || c.sample;
     const amt = (amount.trim() || "0.50").replace(/[^0-9.]/g, "") || "0.50";
     try {
+      // For Ethereum, sign the REAL sighash of an EIP-1559 transaction so the
+      // result assembles into a broadcastable tx (not a demo string hash).
+      const isEth = c.key === "ethereum";
+      const ethTx = isEth ? await buildEthTransfer(dest, Number(amt)) : null;
+      const messageHash = ethTx ? hexToBytes(ethSighash(ethTx)) : undefined;
+
       const { signature, request } = await sendCreateRequest(
         conn,
         { publicKey: new PublicKey(wallet), signTransaction: (t) => sol.signTransaction(t) },
@@ -132,22 +140,32 @@ export default function Page() {
           intent: `${amt} ${c.name} -> ${dest}`,
           threshold: 1,
           validitySlots: 1000n,
+          messageHash,
         }
       );
       const rowId = nextId();
-      pushRow({ kind: "intent", id: rowId, chain: c.name, dot: c.dot, dest, amt, sig: signature, request: request.toString(), threshSig: null });
+      pushRow({ kind: "intent", id: rowId, chain: c.name, dot: c.dot, dest, amt, sig: signature, request: request.toString(), threshSig: null, ethRaw: isEth ? null : undefined });
       setIntents((v) => v + 1);
       setProto(await readProtocol(conn));
-      // Poll for the operator set's threshold signature, then reveal it on the row.
+      // Poll for the operator set's threshold signature, then reveal it — and for
+      // Ethereum, assemble the broadcastable signed transaction from r||s.
       void (async () => {
         for (let i = 0; i < 40; i++) {
           await new Promise((r) => setTimeout(r, 3000));
           try {
             const res = await readRequest(conn, request);
             if (res.signed && res.signatureHex) {
-              setFeed((f) => f.map((row) =>
-                row.id === rowId && row.kind === "intent" ? { ...row, threshSig: res.signatureHex } : row
-              ));
+              const patch: Partial<Extract<Row, { kind: "intent" }>> = { threshSig: res.signatureHex };
+              if (ethTx) {
+                try {
+                  const { raw, hash } = await assembleSignedTx(ethTx, hexToBytes(("0x" + res.signatureHex) as `0x${string}`));
+                  patch.ethRaw = raw;
+                  patch.ethHash = hash;
+                } catch (e: any) {
+                  patch.ethErr = e?.message ?? "assembly failed";
+                }
+              }
+              setFeed((f) => f.map((row) => (row.id === rowId && row.kind === "intent" ? { ...row, ...patch } : row)));
               return;
             }
           } catch { /* transient RPC — keep polling */ }
@@ -159,6 +177,16 @@ export default function Page() {
       setRunning(false);
     }
   }, [running, wallet, ready, selected, destination, amount, conn, connect, pushRow]);
+
+  // Broadcast an assembled Ethereum tx to Sepolia (needs the group address funded).
+  const broadcast = useCallback(async (rowId: string, raw: string) => {
+    try {
+      const hash = await broadcastEth(raw as `0x${string}`);
+      setFeed((f) => f.map((row) => (row.id === rowId && row.kind === "intent" ? { ...row, ethSent: hash } : row)));
+    } catch (e: any) {
+      setFeed((f) => f.map((row) => (row.id === rowId && row.kind === "intent" ? { ...row, ethErr: e?.message ?? "broadcast failed" } : row)));
+    }
+  }, []);
 
   const wrap: React.CSSProperties = { minWidth: 0, overflowWrap: "anywhere", wordBreak: "break-word" };
   const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
@@ -340,6 +368,23 @@ export default function Page() {
                         <span style={{ ...wrap }}>awaiting operator threshold signature…</span>
                       </div>
                     )}
+                    {r.ethRaw && !r.ethSent && (
+                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginTop: 2 }}>
+                        <span style={{ ...rowMeta, color: "var(--accent)" }}>chain-valid tx assembled · {mid(r.ethHash ?? "", 10, 8)}</span>
+                        <button
+                          onClick={() => broadcast(r.id, r.ethRaw!)}
+                          style={{ fontSize: 18, fontWeight: 600, color: "#0d0f13", background: "var(--accent)", border: "none", borderRadius: 9, padding: "8px 16px", cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          Broadcast to Sepolia
+                        </button>
+                      </div>
+                    )}
+                    {r.ethSent && (
+                      <a href={`https://sepolia.etherscan.io/tx/${r.ethSent}`} target="_blank" rel="noreferrer" style={{ ...rowMeta, color: "var(--accent)", textDecoration: "underline" }}>
+                        broadcast · view on Etherscan ↗
+                      </a>
+                    )}
+                    {r.ethErr && <div style={{ ...rowMeta, color: "var(--warn)" }}>{r.ethErr}</div>}
                   </>
                 )}
                 {r.kind === "error" && (

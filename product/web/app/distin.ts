@@ -125,6 +125,9 @@ export type IntentArgs = {
   intent: string;
   threshold: number;
   validitySlots: bigint;
+  // When set, this exact 32-byte digest is signed instead of sha256(intent) —
+  // used to sign the real sighash of an on-target-chain transaction.
+  messageHash?: Uint8Array;
 };
 
 // Build the create_signing_request instruction for the connected wallet.
@@ -138,7 +141,7 @@ export async function buildCreateRequestIx(
   const nonce = state.requestNonce;
   const request = requestPda(protocol, nonce);
 
-  const messageHash = await sha256(args.intent);
+  const messageHash = args.messageHash ?? (await sha256(args.intent));
 
   // Borsh-style little-endian arg encoding, matching the program signature.
   const buf = new Uint8Array(8 + 1 + 1 + 8 + 32 + 2 + 8);
