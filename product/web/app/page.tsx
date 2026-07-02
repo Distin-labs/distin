@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDown, ArrowDownRight, AlertTriangle } from "lucide-react";
+import { Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDown, ArrowDownRight, AlertTriangle, FileText, Code } from "lucide-react";
 import {
   RPC_URL, CLUSTER_LABEL, PROGRAM_ID,
   Scheme, TargetVm, readProtocol, readRequest, sendCreateRequest, type ProtocolState,
@@ -200,20 +200,42 @@ export default function Page() {
   const boxHead: React.CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 17, color: "var(--text2)", marginBottom: 12 };
   const bareInput: React.CSSProperties = { width: "100%", boxSizing: "border-box", background: "transparent", border: "none", color: "var(--text)", fontFamily: mono, padding: 0, outline: "none" };
 
+  const navItem = (icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void, href?: string) => {
+    const style: React.CSSProperties = {
+      display: "flex", alignItems: "center", gap: 11, padding: "11px 12px", borderRadius: 11,
+      fontSize: 17, fontWeight: 600, cursor: "pointer", textDecoration: "none",
+      color: active ? "var(--text)" : "var(--text2)",
+      background: active ? "var(--accent-soft)" : "transparent",
+      border: `1px solid ${active ? "var(--accent-border)" : "transparent"}`,
+    };
+    return href
+      ? <a key={label} href={href} target="_blank" rel="noreferrer" style={style}>{icon}<span>{label}</span></a>
+      : <button key={label} onClick={onClick} style={{ ...style, width: "100%", textAlign: "left", fontFamily: "inherit" }}>{icon}<span>{label}</span></button>;
+  };
+
   return (
-    <main style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", overflowX: "hidden", ...PALETTE }}>
+    <main style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", overflowX: "hidden", display: "flex", ...PALETTE }}>
+      <aside className="sidebar" style={{ width: 236, flex: "0 0 236px", boxSizing: "border-box", borderRight: "1px solid var(--border)", background: "var(--bg2)", padding: "20px 14px", display: "flex", flexDirection: "column", gap: 4, position: "sticky", top: 0, height: "100vh" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px 20px" }}>
+          <img src="/logo.png" alt="Distin" width={34} height={34} style={{ width: 34, height: 34, borderRadius: 10, objectFit: "cover" }} />
+          <span style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.01em" }}>Distin</span>
+        </div>
+        {navItem(<Zap size={19} />, "Sign", true)}
+        {navItem(<Radio size={19} />, "Activity", false, () => document.getElementById("feed")?.scrollIntoView({ behavior: "smooth" }))}
+        {navItem(<FileText size={19} />, "Docs", false, undefined, "https://distin.xyz/docs")}
+        {navItem(<Code size={19} />, "GitHub", false, undefined, "https://github.com/Distin-labs/distin")}
+        <div style={{ marginTop: "auto", fontSize: 15, color: "var(--text2)", padding: "10px 8px", lineHeight: 1.5 }}>
+          Threshold signing,<br />coordinated on Solana.
+        </div>
+      </aside>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
       <header
         style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "18px 20px", borderBottom: "1px solid var(--border)",
-          maxWidth: 1100, margin: "0 auto", gap: 12, flexWrap: "wrap", boxSizing: "border-box",
+          display: "flex", alignItems: "center", justifyContent: "flex-end",
+          padding: "18px 22px", borderBottom: "1px solid var(--border)", gap: 12, boxSizing: "border-box",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-          <img src="/logo.png" alt="Distin" width={40} height={40} style={{ width: 40, height: 40, flex: "0 0 auto", borderRadius: 12, objectFit: "cover" }} />
-          <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.01em" }}>Distin</span>
-        </div>
-
         <button
           id="connect"
           onClick={connect}
@@ -276,9 +298,9 @@ export default function Page() {
           </div>
 
           {/* divider */}
-          <div style={{ display: "flex", justifyContent: "center", margin: "-11px 0", position: "relative", zIndex: 2 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 999, background: "var(--bg2)", border: "1px solid var(--border)", display: "grid", placeItems: "center" }}>
-              <ArrowDown size={18} color="var(--accent)" />
+          <div style={{ display: "flex", justifyContent: "center", margin: "-13px 0", position: "relative", zIndex: 2 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 999, background: "var(--accent)", border: "4px solid var(--bg2)", display: "grid", placeItems: "center" }}>
+              <ArrowDown size={19} color="#07100e" strokeWidth={2.5} />
             </div>
           </div>
 
@@ -327,8 +349,8 @@ export default function Page() {
             disabled={running}
             style={{
               width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-              background: running ? "var(--bg3)" : "var(--accent)",
-              color: running ? "var(--text2)" : "#0a0f1a",
+              background: running ? "var(--bg3)" : "linear-gradient(90deg, #23dcc8 0%, #3aa0ff 100%)",
+              color: running ? "var(--text2)" : "#07100e",
               border: "none", fontSize: 20, fontWeight: 800, padding: "16px 18px", borderRadius: 14,
               cursor: running ? "default" : "pointer", boxSizing: "border-box", transition: "all 0.18s ease",
             }}
@@ -355,7 +377,7 @@ export default function Page() {
         </div>
 
         {/* Feed */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 28, marginBottom: 12 }}>
+        <div id="feed" style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 28, marginBottom: 12, scrollMarginTop: 20 }}>
           <Radio size={18} color="var(--accent)" style={{ flex: "0 0 auto" }} />
           <span style={{ fontSize: 19, fontWeight: 700 }}>Signing intents</span>
         </div>
@@ -429,8 +451,9 @@ export default function Page() {
           {CLUSTER_LABEL} · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)}
         </div>
       </section>
+      </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (max-width: 860px){ .sidebar{ display:none !important } }`}</style>
     </main>
   );
 }
