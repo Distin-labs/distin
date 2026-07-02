@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
 import { Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDown, ArrowDownRight, AlertTriangle, FileText, Code, ChevronDown } from "lucide-react";
 import {
-  RPC_URL, CLUSTER_LABEL, PROGRAM_ID,
+  RPC_URL, PROGRAM_ID,
   Scheme, TargetVm, readProtocol, readRequest, readDashboard, readMyActivity, sendCreateRequest,
   type ProtocolState, type DashStats, type ActivityItem,
 } from "./distin";
@@ -139,7 +139,7 @@ export default function Page() {
     const sol = getProvider();
     if (!sol || !wallet) { await connect(); return; }
     if (!ready) {
-      pushRow({ kind: "error", id: nextId(), msg: "Protocol has no active operators yet. Run the localnet bootstrap." });
+      pushRow({ kind: "error", id: nextId(), msg: "No active operators are bonded right now. Try again shortly." });
       return;
     }
     setRunning(true);
@@ -262,7 +262,7 @@ export default function Page() {
           <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 12, padding: "13px 13px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
               <span className="live-dot" style={{ width: 8, height: 8, borderRadius: 999, background: ready ? "var(--accent)" : "var(--warn)", boxShadow: ready ? "0 0 8px var(--accent)" : "none", flex: "0 0 auto" }} />
-              <span style={{ fontSize: 15, fontWeight: 700 }}>{ready ? "Live on devnet" : "Connecting…"}</span>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{ready ? "Live on Solana" : "Connecting…"}</span>
             </div>
             {([
               ["Operators", proto ? String(proto.operatorCount) : "—"],
@@ -396,7 +396,7 @@ export default function Page() {
                 </div>
 
                 <div style={{ marginTop: 22, fontSize: 16, color: "var(--text2)", fontFamily: mono, ...wrap }}>
-                  {CLUSTER_LABEL} · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)} · no historical index (live reads only)
+                  Solana · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)} · no historical index (live reads only)
                 </div>
               </>
             );
@@ -442,7 +442,7 @@ export default function Page() {
             );
           })()}
           <div style={{ marginTop: 22, fontSize: 16, color: "var(--text2)", fontFamily: mono, ...wrap }}>
-            {CLUSTER_LABEL} · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)}
+            Solana · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)}
           </div>
         </section>
       )}
@@ -643,7 +643,7 @@ export default function Page() {
         </div>
 
         <div style={{ marginTop: 24, fontSize: 18, color: "var(--text2)", fontFamily: mono, ...wrap }}>
-          {CLUSTER_LABEL} · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)}
+          Solana · coordinator {mid(PROGRAM_ID.toBase58(), 6, 6)}
         </div>
       </section>
       )}
