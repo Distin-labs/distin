@@ -514,10 +514,15 @@ fn fulfill(
 fn post_request(rpc: &RpcClient, program: &Pubkey, message_hash: &[u8; 32], scheme: u8) {
     let admin = load_admin();
     let (protocol, _) = Pubkey::find_program_address(&[b"protocol"], program);
-    let nonce = read_request_nonce(&rpc.get_account(&protocol).unwrap().data);
-    let (request, _) =
-        Pubkey::find_program_address(&[b"request", protocol.as_ref(), &nonce.to_le_bytes()], program);
+    // Client-chosen nonce (requester + nonce seed the request PDA); use the slot
+    // for a fresh value each call.
+    let client_nonce = rpc.get_slot().unwrap_or(0);
+    let (request, _) = Pubkey::find_program_address(
+        &[b"request", admin.pubkey().as_ref(), &client_nonce.to_le_bytes()],
+        program,
+    );
     let mut data = DISC_CREATE_REQUEST.to_vec();
+    data.extend_from_slice(&client_nonce.to_le_bytes()); // client_nonce (first arg)
     data.push(scheme); // 0=FrostEd25519, 1=Gg20Secp256k1
     data.push(if scheme == 1 { 1 } else { 0 }); // target_vm: Evm for gg20, Svm for frost
     data.extend_from_slice(&0u64.to_le_bytes()); // target_chain_id

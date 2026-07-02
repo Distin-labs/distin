@@ -357,6 +357,11 @@ pub mod distin {
     /// User: post a cross-VM signing intent for the operator set to fulfill.
     pub fn create_signing_request(
         ctx: Context<CreateSigningRequest>,
+        // Client-chosen nonce: seeds the request PDA together with the requester,
+        // so the address is fully determined by the caller. This removes the race
+        // a global counter caused, where a wallet's pre-flight simulation failed
+        // whenever another request advanced the shared nonce.
+        _client_nonce: u64,
         scheme: SignatureScheme,
         target_vm: TargetVm,
         target_chain_id: u64,
@@ -887,6 +892,7 @@ pub struct SlashOperator<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(client_nonce: u64)]
 pub struct CreateSigningRequest<'info> {
     #[account(mut)]
     pub requester: Signer<'info>,
@@ -900,8 +906,8 @@ pub struct CreateSigningRequest<'info> {
         space = 8 + SigningRequest::INIT_SPACE,
         seeds = [
             REQUEST_SEED,
-            protocol.key().as_ref(),
-            protocol.request_nonce.to_le_bytes().as_ref()
+            requester.key().as_ref(),
+            client_nonce.to_le_bytes().as_ref()
         ],
         bump
     )]

@@ -45,15 +45,6 @@ export enum TargetVm {
 export const protocolPda = () =>
   PublicKey.findProgramAddressSync([PROTOCOL_SEED], PROGRAM_ID)[0];
 
-const requestPda = (protocol: PublicKey, nonce: bigint) => {
-  const n = new Uint8Array(8);
-  new DataView(n.buffer).setBigUint64(0, nonce, true);
-  return PublicKey.findProgramAddressSync(
-    [REQUEST_SEED, protocol.toBuffer(), n],
-    PROGRAM_ID
-  )[0];
-};
-
 // request_nonce offset inside the Protocol account data (after the 8-byte disc):
 // admin 32 + pending_admin 32 + bond_mint 32 + bond_vault 32 + slash_pool 32
 // + lst_price_feed 32 + threshold_bps 2 + min_bond 8 + unbonding_slots 8
@@ -135,18 +126,26 @@ export async function buildCreateRequestIx(
   conn: Connection,
   requester: PublicKey,
   args: IntentArgs
-): Promise<{ ix: TransactionInstruction; request: PublicKey; nonce: bigint }> {
+): Promise<{ ix: TransactionInstruction; request: PublicKey }> {
   const protocol = protocolPda();
-  const state = await readProtocol(conn);
-  const nonce = state.requestNonce;
-  const request = requestPda(protocol, nonce);
+
+  // A client-chosen random nonce fully determines the request PDA (seeded by
+  // requester + this nonce), so the address never depends on a global counter.
+  // That removes the race that made wallet pre-flight simulation fail.
+  const cnLE = crypto.getRandomValues(new Uint8Array(8));
+  const request = PublicKey.findProgramAddressSync(
+    [REQUEST_SEED, requester.toBuffer(), cnLE],
+    PROGRAM_ID
+  )[0];
 
   const messageHash = args.messageHash ?? (await sha256(args.intent));
 
-  // Borsh-style little-endian arg encoding, matching the program signature.
-  const buf = new Uint8Array(8 + 1 + 1 + 8 + 32 + 2 + 8);
+  // Borsh-style little-endian arg encoding, matching the program signature
+  // (client_nonce is the FIRST arg, right after the discriminator).
+  const buf = new Uint8Array(8 + 8 + 1 + 1 + 8 + 32 + 2 + 8);
   let o = 0;
   buf.set(CREATE_REQUEST_DISC, o); o += 8;
+  buf.set(cnLE, o); o += 8;
   buf[o++] = args.scheme;
   buf[o++] = args.targetVm;
   new DataView(buf.buffer).setBigUint64(o, args.targetChainId, true); o += 8;
@@ -165,7 +164,7 @@ export async function buildCreateRequestIx(
     data: Buffer.from(buf),
   });
 
-  return { ix, request, nonce };
+  return { ix, request };
 }
 
 // Sign + send via the injected wallet, then confirm. Returns the tx signature.
