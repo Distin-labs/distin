@@ -3,7 +3,7 @@
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Connection, PublicKey, Transaction } from "@solana/web3.js";
-import { Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDown, ArrowDownRight, AlertTriangle, FileText, Code } from "lucide-react";
+import { Wallet, ShieldCheck, Loader2, Check, Radio, Zap, ArrowDown, ArrowDownRight, AlertTriangle, FileText, Code, ChevronDown } from "lucide-react";
 import {
   RPC_URL, CLUSTER_LABEL, PROGRAM_ID,
   Scheme, TargetVm, readProtocol, readRequest, readDashboard, sendCreateRequest,
@@ -64,6 +64,7 @@ export default function Page() {
   const [proto, setProto] = useState<ProtocolState | null>(null);
   const [view, setView] = useState<"sign" | "dashboard">("sign");
   const [dash, setDash] = useState<DashStats | null>(null);
+  const [chainMenu, setChainMenu] = useState(false);
   const idRef = useRef(0);
 
   const conn = useMemo(() => new Connection(RPC_URL, "confirmed"), []);
@@ -403,40 +404,45 @@ export default function Page() {
             boxShadow: "0 1px 0 rgba(255,255,255,0.02) inset, 0 24px 60px -40px rgba(0,0,0,0.9)",
           }}
         >
-          {/* You send */}
-          <div style={sendBox}>
+          {/* You send — amount on the left, chain dropdown on the right (THORSwap style) */}
+          <div style={{ ...sendBox, position: "relative" }}>
             <div style={boxHead}>
               <span>You send</span>
               <span>native · no wrapping</span>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-              {CHAINS.map((c, i) => {
-                const on = i === selected;
-                return (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <input
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                inputMode="decimal"
+                style={{ ...bareInput, fontSize: 30, fontWeight: 700, flex: 1, minWidth: 0 }}
+              />
+              <button
+                onClick={() => setChainMenu((v) => !v)}
+                style={{ display: "flex", alignItems: "center", gap: 8, flex: "0 0 auto", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 999, padding: "8px 12px", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                <span style={{ width: 12, height: 12, borderRadius: 999, background: chain.dot, flex: "0 0 auto" }} />
+                <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{chain.name}</span>
+                <ChevronDown size={17} color="var(--text2)" style={{ transform: chainMenu ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
+              </button>
+            </div>
+            <div style={{ fontSize: 15, color: "var(--text2)", marginTop: 6 }}>{chain.scheme} · {chain.curve}</div>
+            {chainMenu && (
+              <div style={{ position: "absolute", right: 15, top: 62, zIndex: 10, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: 6, minWidth: 180, boxShadow: "0 20px 50px -20px rgba(0,0,0,0.9)" }}>
+                {CHAINS.map((c, i) => (
                   <button
                     key={c.key}
-                    onClick={() => setSelected(i)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      background: on ? "var(--accent-soft)" : "var(--bg2)",
-                      border: `1px solid ${on ? "var(--accent-border)" : "var(--border)"}`,
-                      color: on ? "var(--text)" : "var(--text2)",
-                      fontSize: 15, fontWeight: 600, padding: "6px 10px", borderRadius: 999, cursor: "pointer", transition: "all 0.16s ease",
-                    }}
+                    onClick={() => { setSelected(i); setChainMenu(false); }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", background: i === selected ? "var(--accent-soft)" : "transparent", border: "none", borderRadius: 10, padding: "10px 12px", cursor: "pointer", fontFamily: "inherit", color: "var(--text)" }}
                   >
-                    <span style={{ width: 8, height: 8, borderRadius: 999, background: c.dot, display: "inline-block", flex: "0 0 auto" }} />
-                    {c.name}
+                    <span style={{ width: 11, height: 11, borderRadius: 999, background: c.dot, flex: "0 0 auto" }} />
+                    <span style={{ fontSize: 17, fontWeight: 600 }}>{c.name}</span>
+                    <span style={{ marginLeft: "auto", fontSize: 14, color: "var(--text2)" }}>{c.curve}</span>
                   </button>
-                );
-              })}
-            </div>
-            <input
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              inputMode="decimal"
-              style={{ ...bareInput, fontSize: 30, fontWeight: 700 }}
-            />
+                ))}
+              </div>
+            )}
           </div>
 
           {/* divider */}
